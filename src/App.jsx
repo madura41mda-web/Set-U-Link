@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Impact from './pages/Impact.jsx';
 import SignUp from './pages/SignUp.jsx';
 import Login from './pages/Login.jsx';
+import ResetPassword from './pages/ResetPassword.jsx';
 import ReportIssue from './pages/ReportIssue.jsx';
 import MyReports from './pages/MyReports.jsx';
 import AdminOrgAccounts from './pages/AdminOrgAccounts.jsx';
@@ -33,6 +34,7 @@ function App() {
           <Route path="/pending-verification" element={<PendingVerification />} />
           <Route path="/feed" element={<IssueFeed />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/report" element={<ReportIssue />} />
           <Route path="/my-reports" element={<MyReports />} />
           <Route path="/org-dashboard" element={<OrgDashboard />} />

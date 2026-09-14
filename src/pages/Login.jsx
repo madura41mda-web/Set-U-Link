@@ -8,9 +8,32 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetSubmitting, setResetSubmitting] = useState(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const handleForgotPassword = async () => {
+    setError('');
+    if (!email.trim()) {
+      setError('Enter your email above first, then click "Forgot password?"');
+      return;
+    }
+    try {
+      setResetSubmitting(true);
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (resetError) throw resetError;
+      setResetSent(true);
+    } catch (err) {
+      console.error('Reset password error:', err);
+      setError(err.message || 'Could not send reset email.');
+    } finally {
+      setResetSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -74,6 +97,89 @@ export default function Login() {
           </p>
         </div>
 
+        {/* Quick Demo Role Selector */}
+        <div className="space-y-3">
+          <label className="text-xs font-black text-[var(--ink)] uppercase tracking-wider block">
+            Quick Demo Login
+          </label>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('kilpomer41@gmail.com');
+                setPassword('kilpomer41');
+              }}
+              className="p-3 rounded-2xl border text-left transition-all cursor-pointer bg-white hover:border-[var(--brand)] hover:bg-[var(--bg)]/40 flex flex-col justify-between gap-1 shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xl">👤</span>
+                <span className="text-[10px] font-extrabold text-[var(--brand)] bg-[var(--brand)]/10 px-1.5 py-0.5 rounded">Fill</span>
+              </div>
+              <div>
+                <div className="font-black text-xs text-[var(--ink)]">Citizen Reporter</div>
+                <div className="text-[10px] text-[var(--ink-soft)]">Report & Track Issues</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('madurabhaskar41@gmail.com');
+                setPassword('kilpomer41');
+              }}
+              className="p-3 rounded-2xl border text-left transition-all cursor-pointer bg-white hover:border-blue-500 hover:bg-blue-50/40 flex flex-col justify-between gap-1 shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xl">🏛️</span>
+                <span className="text-[10px] font-extrabold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">Fill</span>
+              </div>
+              <div>
+                <div className="font-black text-xs text-[var(--ink)]">Govt Official</div>
+                <div className="text-[10px] text-[var(--ink-soft)]">Admin Dashboard</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('madura41mda@gmail.com');
+                setPassword('kilpomer41');
+              }}
+              className="p-3 rounded-2xl border text-left transition-all cursor-pointer bg-white hover:border-purple-500 hover:bg-purple-50/40 flex flex-col justify-between gap-1 shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xl">🎓</span>
+                <span className="text-[10px] font-extrabold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">Fill</span>
+              </div>
+              <div>
+                <div className="font-black text-xs text-[var(--ink)]">University Rep</div>
+                <div className="text-[10px] text-[var(--ink-soft)]">Org Dashboard</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('madura.0741@gmail.com');
+                setPassword('kilpomer41');
+              }}
+              className="p-3 rounded-2xl border text-left transition-all cursor-pointer bg-white hover:border-emerald-500 hover:bg-emerald-50/40 flex flex-col justify-between gap-1 shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xl">🏢</span>
+                <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Fill</span>
+              </div>
+              <div>
+                <div className="font-black text-xs text-[var(--ink)]">CSR / Org Rep</div>
+                <div className="text-[10px] text-[var(--ink-soft)]">Org Dashboard</div>
+              </div>
+            </button>
+          </div>
+          <p className="text-[10px] text-[var(--ink-soft)]">
+            Buttons only autofill the fields below — you still submit the real login form.
+          </p>
+        </div>
+
         {error && (
           <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-2.5">
             <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -110,6 +216,20 @@ export default function Login() {
               placeholder="••••••••"
               className="w-full px-4 py-3 rounded-xl border border-[var(--line)] bg-white/90 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent transition-all"
             />
+            <div className="mt-1.5 text-right">
+              {resetSent ? (
+                <span className="text-xs text-green-700 font-medium">Reset email sent — check your inbox.</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={resetSubmitting}
+                  className="text-xs font-bold text-[var(--brand)] hover:underline disabled:opacity-50"
+                >
+                  {resetSubmitting ? 'Sending...' : 'Forgot password?'}
+                </button>
+              )}
+            </div>
           </div>
 
           <button

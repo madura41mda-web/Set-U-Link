@@ -11,6 +11,7 @@ import UniversityStatsGrid from '../components/university/UniversityStatsGrid.js
 import TeamFormationModal from '../components/university/TeamFormationModal.jsx';
 import RecommendedChallenges from '../components/university/RecommendedChallenges.jsx';
 import UniversityChallengeSections from '../components/university/UniversityChallengeSections.jsx';
+import ChallengeReviewModal from '../components/university/ChallengeReviewModal.jsx';
 import { getDepartmentSuggestions, getExplainableMatchScore } from '../lib/departmentMatcher.js';
 
 const STAGE_LABELS = {
@@ -54,6 +55,8 @@ export default function OrgDashboard() {
   const [teamModalIssue, setTeamModalIssue] = useState(null);
   const [formedTeams, setFormedTeams] = useState({});
   const [reviewStatuses, setReviewStatuses] = useState({});
+  // New state for Challenge Review modal
+  const [reviewModalMatch, setReviewModalMatch] = useState(null);
 
   // Auth & role check
   useEffect(() => {
