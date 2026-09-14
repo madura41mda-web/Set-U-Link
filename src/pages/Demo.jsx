@@ -42,9 +42,9 @@ export default function Demo() {
     'Verified & closed by citizen',
   ]
 
+  const [autoSimulate, setAutoSimulate] = useState(false)
+
   const handleSubmit = () => {
-    if (running) return
-    setRunning(true)
     const cat = category
     const loc = location || 'Jharkhand'
     const id = 'SL-' + Math.random().toString(36).slice(2, 7).toUpperCase()
@@ -52,20 +52,33 @@ export default function Demo() {
 
     const statusText = statusTextFor(cat, loc)
     setStatusLines(statusText)
-
-    // Reveal auto-match panel for this category
     setMatch(MATCH_DATA[cat])
+    setStageIndex(0)
+    setBarResolved(false)
 
-    const advance = (i) => {
-      setStageIndex(i)
-      if (i >= STAGES.length - 1) {
-        setRunning(false)
-        setBarResolved(true)
-        return
+    if (autoSimulate) {
+      setRunning(true)
+      const advance = (i) => {
+        setStageIndex(i)
+        if (i >= STAGES.length - 1) {
+          setRunning(false)
+          setBarResolved(true)
+          return
+        }
+        timersRef.current.push(setTimeout(() => advance(i + 1), 1100))
       }
-      timersRef.current.push(setTimeout(() => advance(i + 1), 1100))
+      advance(0)
     }
-    advance(0)
+  }
+
+  const handleManualNextStage = () => {
+    if (stageIndex < STAGES.length - 1) {
+      const nextIdx = stageIndex + 1
+      setStageIndex(nextIdx)
+      if (nextIdx === STAGES.length - 1) {
+        setBarResolved(true)
+      }
+    }
   }
 
   const barClass = barResolved
@@ -155,14 +168,36 @@ export default function Demo() {
                     </div>
                   </div>
 
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg)] border border-[var(--line)]">
+                    <span className="text-xs font-bold text-[var(--ink)]">Auto-Simulate All Stages</span>
+                    <input
+                      type="checkbox"
+                      checked={autoSimulate}
+                      onChange={(e) => setAutoSimulate(e.target.checked)}
+                      className="w-4 h-4 cursor-pointer accent-[var(--brand)]"
+                    />
+                  </div>
+
                   <button
-                    className="btn-primary w-full py-3.5 rounded-xl font-semibold inline-flex items-center justify-center gap-2"
+                    className="btn-primary w-full py-3.5 rounded-xl font-semibold inline-flex items-center justify-center gap-2 cursor-pointer"
                     onClick={handleSubmit}
                   >
-                    Submit Report
+                    Submit Report & Start Tracker
                     <svg className="w-4 h-4" viewBox="0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
                   </button>
-                  <p className="text-xs text-center text-[var(--ink-soft)]">On submit, the issue is assigned a tracking ID and routed through the lifecycle.</p>
+
+                  {stageIndex >= 0 && !autoSimulate && stageIndex < STAGES.length - 1 && (
+                    <button
+                      onClick={handleManualNextStage}
+                      className="w-full py-3 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all cursor-pointer text-xs"
+                    >
+                      ⚡ Advance to Next Stage ({STAGES[stageIndex + 1]?.label}) →
+                    </button>
+                  )}
+
+                  <p className="text-xs text-center text-[var(--ink-soft)] font-medium">
+                    💡 In the live portal, stage progression requires manual verification & action by assigned University Mentors and Industry Reps on their dashboard.
+                  </p>
                 </div>
               </div>
             </Reveal>

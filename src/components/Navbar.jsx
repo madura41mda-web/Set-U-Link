@@ -50,28 +50,51 @@ export default function Navbar() {
         </Link>
 
         <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-[var(--ink-soft)]">
-          {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
-              className={({ isActive }) => `nav-link hover:text-[var(--ink)]${isActive ? ' active' : ''}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) => `nav-link hover:text-[var(--ink)]${isActive ? ' active' : ''}`}
+          >
+            Home
+          </NavLink>
 
+          <NavLink
+            to="/how-it-works"
+            className={({ isActive }) => `nav-link hover:text-[var(--ink)]${isActive ? ' active' : ''}`}
+          >
+            How it Works
+          </NavLink>
+
+          <NavLink
+            to="/feed"
+            className={({ isActive }) => `nav-link hover:text-[var(--ink)]${isActive ? ' active' : ''}`}
+          >
+            Community Feed
+          </NavLink>
+
+          <NavLink
+            to="/impact"
+            className={({ isActive }) => `nav-link hover:text-[var(--ink)]${isActive ? ' active' : ''}`}
+          >
+            Impact
+          </NavLink>
+
+          {/* Role specific single portal tab */}
           {user && profile?.role === 'org_rep' && (
             <NavLink
               to="/org-dashboard"
-              className={({ isActive }) => `nav-link text-purple-700 font-extrabold hover:text-purple-900${isActive ? ' active' : ''}`}
+              className={({ isActive }) => `nav-link text-purple-700 font-extrabold hover:text-purple-900 flex items-center gap-1.5${isActive ? ' active' : ''}`}
             >
-              🏢 Org Dashboard
+              <span>🏢</span>
+              <span>Org Dashboard</span>
             </NavLink>
           )}
 
           {user && profile?.role !== 'org_rep' && (
-            <NavLink to="/my-reports" className={({ isActive }) => `nav-link hover:text-[var(--ink)]${isActive ? ' active' : ''}`}>
+            <NavLink
+              to="/my-reports"
+              className={({ isActive }) => `nav-link font-bold hover:text-[var(--ink)]${isActive ? ' active' : ''}`}
+            >
               My Reports
             </NavLink>
           )}
@@ -81,21 +104,16 @@ export default function Navbar() {
               to="/admin/org-accounts"
               className={({ isActive }) => `nav-link text-purple-700 font-bold hover:text-purple-900${isActive ? ' active' : ''}`}
             >
-              Org Accounts
-            </NavLink>
-          )}
-
-          {profile?.role !== 'org_rep' && (
-            <NavLink to="/report" className={({ isActive }) => `nav-link hover:text-[var(--ink)]${isActive ? ' active' : ''}`}>
-              Report Issue
+              Org Approvals
             </NavLink>
           )}
         </nav>
 
         <div className="hidden lg:flex items-center gap-3">
           {profile?.role !== 'org_rep' && (
-            <Link to="/report" className="btn-accent text-xs font-extrabold text-white px-4 py-2 rounded-xl shadow-md">
-              + Report Issue
+            <Link to="/report" className="btn-accent text-xs font-extrabold text-white px-4 py-2 rounded-xl shadow-md inline-flex items-center gap-1">
+              <span>+</span>
+              <span>Report Issue</span>
             </Link>
           )}
 
@@ -110,7 +128,7 @@ export default function Navbar() {
                   {displayName.charAt(0)}
                 </span>
                 <div className="text-xs">
-                  <div className="font-bold text-[var(--ink)] leading-tight">{displayName}</div>
+                  <div className="font-bold text-[var(--ink)] leading-tight max-w-[120px] truncate">{displayName}</div>
                   {roleLabel && (
                     <div className="text-[9px] font-semibold text-[var(--brand)] tracking-wider">
                       {roleLabel}

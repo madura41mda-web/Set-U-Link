@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../lib/supabaseClient.js';
@@ -55,8 +55,48 @@ export default function MyReports() {
   const [advancingId, setAdvancingId] = useState(null);
   const [outcomeTypes, setOutcomeTypes] = useState({}); // { [issueId]: string }
   const [toast, setToast] = useState(null);
+  const [citizenReplyText, setCitizenReplyText] = useState('');
+  const [submittingReply, setSubmittingReply] = useState(false);
+
+  // Search, Filter & Pagination
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 8;
 
   const isAdmin = profile?.role === 'admin';
+
+  const handleSendCitizenReply = async (issueId) => {
+    if (!citizenReplyText.trim() || !user) return;
+    try {
+      setSubmittingReply(true);
+      const { data, error } = await supabase.from('comments').insert({
+        issue_id: issueId,
+        author_id: user.id,
+        body: citizenReplyText.trim(),
+        is_org_update: false,
+      }).select('*, profiles(*, organizations(*))').single();
+
+      if (error) throw error;
+
+      setCitizenReplyText('');
+      setToast({ type: 'success', message: 'Message sent to reviewing administration!' });
+      
+      // Update local state immediately
+      setSelectedDetailIssue(prev => prev ? {
+        ...prev,
+        comments: [...(prev.comments || []), data]
+      } : prev);
+      
+      await fetchIssues();
+    } catch (err) {
+      console.error('Failed to post reply:', err);
+      setToast({ type: 'error', message: err.message || 'Failed to post reply.' });
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
 
   // Fetch organizations for distance calculations
   useEffect(() => {
@@ -289,7 +329,7 @@ export default function MyReports() {
     }
   };
 
-  if (loading || !user) {
+  if (loading || (!user && fetching)) {
     return (
       <div className="min-h-[75vh] flex items-center justify-center">
         <div className="flex items-center gap-3 text-[var(--ink-soft)]">
@@ -304,7 +344,7 @@ export default function MyReports() {
   }
 
   return (
-    <div className="pt-24 pb-16 min-h-[90vh] px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto space-y-8">
+    <div className="pt-24 pb-16 min-h-[90vh] px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto space-y-6">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       {/* Header */}
@@ -356,6 +396,48 @@ export default function MyReports() {
         </div>
       </div>
 
+      {/* Filter & Search Toolbar */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setCurrentPage(1);
+          }}
+          placeholder="🔍 Search issues by keyword, locality..."
+          className="px-4 py-2.5 rounded-xl border border-[var(--line)] bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+        />
+
+        <select
+          value={selectedCategory}
+          onChange={(e) => {
+            setSelectedCategory(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+        >
+          <option value="All">All Categories</option>
+          {['Water Supply', 'Roads & Infrastructure', 'Sanitation & Waste', 'Electricity & Power', 'Education & Youth', 'Healthcare & Clinics', 'Pollution & Environment', 'Drainage & Waterlogging', 'Parks & Public Spaces'].map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
+        <select
+          value={selectedStatus}
+          onChange={(e) => {
+            setSelectedStatus(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+        >
+          <option value="All">All Stages</option>
+          {['reported', 'validated', 'matched', 'sanctioned', 'in_progress', 'resolved'].map((s) => (
+            <option key={s} value={s} className="capitalize">{STAGE_LABELS[s] || s}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Loading state */}
       {fetching ? (
         <div className="p-12 text-center bg-white/70 rounded-3xl border border-[var(--line)]">
@@ -383,10 +465,30 @@ export default function MyReports() {
             </Link>
           </div>
         </div>
+      ) : filteredIssues.length === 0 ? (
+        /* Empty Filter State */
+        <div className="p-12 text-center bg-white/80 nav-blur rounded-3xl border border-[var(--line)] shadow-sm space-y-3">
+          <div className="text-3xl">🔍</div>
+          <h3 className="text-base font-bold text-[var(--ink)]">No issues matching your filter criteria</h3>
+          <p className="text-xs text-[var(--ink-soft)] max-w-md mx-auto">
+            Try resetting your search term or category dropdown to see more civic reports.
+          </p>
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setSelectedCategory('All');
+              setSelectedStatus('All');
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-800 transition-all cursor-pointer"
+          >
+            Reset Filters
+          </button>
+        </div>
       ) : (
         /* Issues List */
         <div className="space-y-4">
-          {issues.map((issue) => {
+          {paginatedIssues.map((issue) => {
             const isExpanded = expandedIssueId === issue.id;
             const nextStage = NEXT_STAGE_MAP[issue.status];
             const badgeStyle = STATUS_BADGES[issue.status] || STATUS_BADGES.reported;
@@ -431,6 +533,26 @@ export default function MyReports() {
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
+                        {/* Target Entity Badge */}
+                        {(() => {
+                          const targetMatch = issue.description?.match(/\[Target:\s*([^\]]+)\]/i);
+                          const target = targetMatch ? targetMatch[1].trim() : (
+                            ['Sanitation & Waste', 'Roads & Infrastructure', 'Water Supply', 'Electricity & Power'].includes(issue.category) ? 'Government' :
+                            ['Education & Youth', 'Healthcare & Clinics', 'Public Safety'].includes(issue.category) ? 'University' : 'Industry'
+                          );
+                          const isGov = target.toLowerCase().includes('gov');
+                          const isUni = target.toLowerCase().includes('uni');
+                          return (
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 ${
+                              isGov ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                              isUni ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                              'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}>
+                              <span>{isGov ? '🏛️ To: Govt' : isUni ? '🎓 To: Uni' : '🏢 To: Industry'}</span>
+                            </span>
+                          );
+                        })()}
+
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gray-100 text-gray-700 border border-gray-200">
                           {issue.category}
                         </span>
@@ -441,6 +563,24 @@ export default function MyReports() {
                           </span>
                         )}
                         <span className="text-xs text-[var(--ink-soft)] font-mono">📅 {formattedDate}</span>
+                        
+                        {/* Claim Status Badge */}
+                        {(() => {
+                          const claimedMatch = (issue.matches || []).find(m => ['claimed', 'accepted', 'sanctioned', 'in_progress', 'completed'].includes(m.status));
+                          if (claimedMatch && claimedMatch.organizations) {
+                            return (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
+                                🎯 Taken up by {claimedMatch.organizations.name}
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+                              ⏳ In Universal Pool
+                            </span>
+                          );
+                        })()}
+
                         {matchCount > 0 && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200">
                             🤝 {matchCount} {matchCount === 1 ? 'Match' : 'Matches'}
@@ -579,6 +719,29 @@ export default function MyReports() {
               </div>
             );
           })}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-4">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-xl border border-[var(--line)] bg-white text-xs font-bold disabled:opacity-40 cursor-pointer"
+              >
+                ← Previous
+              </button>
+              <span className="text-xs font-bold text-[var(--ink-soft)] px-3">
+                Page {currentPage} of {totalPages} ({filteredIssues.length} issues)
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-xl border border-[var(--line)] bg-white text-xs font-bold disabled:opacity-40 cursor-pointer"
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -843,6 +1006,36 @@ export default function MyReports() {
                         </div>
                       );
                     })}
+                  </div>
+
+                  {/* Citizen Reply Form */}
+                  <div className="p-3.5 rounded-2xl bg-white border border-[var(--line)] shadow-xs space-y-2">
+                    <label className="text-[11px] font-bold text-[var(--ink)] uppercase tracking-wider block">
+                      💬 Reply to Reviewing Team / Administration
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={citizenReplyText}
+                        onChange={(e) => setCitizenReplyText(e.target.value)}
+                        placeholder="Type an update, clarification, or follow-up note..."
+                        className="flex-1 px-3.5 py-2 rounded-xl border border-[var(--line)] bg-[var(--bg)]/50 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendCitizenReply(selectedDetailIssue.id);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSendCitizenReply(selectedDetailIssue.id)}
+                        disabled={submittingReply || !citizenReplyText.trim()}
+                        className="btn-accent px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm disabled:opacity-50 cursor-pointer shrink-0"
+                      >
+                        {submittingReply ? 'Sending...' : 'Send Reply'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               );

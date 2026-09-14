@@ -10,13 +10,15 @@ import { calculatePriorityScore } from '../lib/priorityScorer.js';
 import { matchIssue } from '../lib/matchingEngine.js';
 
 const CATEGORIES = [
-  { value: 'education', label: 'Education & Schools' },
-  { value: 'health', label: 'Healthcare & Medical' },
-  { value: 'water', label: 'Clean Water & Sanitation' },
-  { value: 'sanitation', label: 'Waste & Hygiene' },
-  { value: 'infra', label: 'Infrastructure & Roads' },
-  { value: 'agriculture', label: 'Agriculture & Farming' },
-  { value: 'livelihood', label: 'Livelihood & Employment' },
+  { value: 'health', label: 'Doctor & Healthcare', icon: '🩺', desc: 'Clinics, doctors, medicines, public health' },
+  { value: 'water', label: 'Clean Water & Supply', icon: '💧', desc: 'Pipes, borewells, drinking water, contamination' },
+  { value: 'agriculture', label: 'Food & Agriculture', icon: '🌾', desc: 'Farming, irrigation, cold storage, MSP, seeds' },
+  { value: 'sanitation', label: 'Waste & Sanitation', icon: '🗑️', desc: 'Garbage disposal, sewage, drainage, hygiene' },
+  { value: 'infra', label: 'Roads & Infrastructure', icon: '🛣️', desc: 'Potholes, bridges, streetlights, public buildings' },
+  { value: 'electricity', label: 'Electricity & Power', icon: '⚡', desc: 'Outages, transformers, wires, solar energy' },
+  { value: 'education', label: 'Education & Schools', icon: '📚', desc: 'Classrooms, teachers, mid-day meals, libraries' },
+  { value: 'livelihood', label: 'Livelihood & Jobs', icon: '💼', desc: 'SHGs, skill training, rural enterprise, jobs' },
+  { value: 'safety', label: 'Public Safety & Law', icon: '🚨', desc: 'Street safety, emergency response, civil issues' },
 ];
 
 const DISTRICT_CENTERS = {
@@ -53,6 +55,7 @@ export default function ReportIssue() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [targetEntity, setTargetEntity] = useState('govt'); // 'govt' | 'university' | 'industry'
   const [category, setCategory] = useState('water');
   const [district, setDistrict] = useState('Ranchi');
   const [area, setArea] = useState('Doranda');
@@ -464,9 +467,12 @@ export default function ReportIssue() {
         submitter_type: submitterType,
       });
 
+      const targetLabel = targetEntity === 'university' ? 'University' : targetEntity === 'industry' ? 'Industry' : 'Government';
+      const formattedDescription = `[Target: ${targetLabel}]\n[Locality: ${area.trim() || district}]\n\n${description.trim()}`;
+
       const issuePayload = {
         title: title.trim(),
-        description: area.trim() ? `[Locality: ${area.trim()}]\n\n${description.trim()}` : description.trim(),
+        description: formattedDescription,
         category,
         district,
         area: area.trim(),
@@ -516,24 +522,23 @@ export default function ReportIssue() {
         throw new Error(`Issue created, but failed to log status history: ${historyError.message || historyError.details || 'RLS or schema error'}`);
       }
 
-      // 5. If official panchayat/ulb report, auto-run Edge Matching Engine immediately
-      if (initialStatus === 'validated') {
-        try {
-          await matchIssue(newIssue.id, profile?.id || user.id);
-        } catch (matchErr) {
-          console.warn('Auto match error for official report:', matchErr);
-        }
+      // 5. Run Edge Matching Engine for newly reported issues so they immediately route to University & Industry partners
+      let matchResult = null;
+      try {
+        matchResult = await matchIssue(newIssue.id, profile?.id || user.id);
+      } catch (matchErr) {
+        console.warn('Auto match warning:', matchErr);
       }
 
-      if (isDuplicateLinked) {
+      if (matchResult && matchResult.matched) {
         setToast({
-          type: 'info',
-          message: "This looks similar to an existing report in your area — we've linked your report to it and added your voice to the count",
+          type: 'success',
+          message: `🎉 Issue submitted & auto-matched with ${matchResult.matches?.length || 1} partner organizations! Routed to University & Industry dashboards.`,
         });
       } else if (isOfficial) {
         setToast({
           type: 'success',
-          message: `Official ${submitterType.toUpperCase()} report auto-validated! Edge matching engine executed to match organizations.`,
+          message: `Official ${submitterType.toUpperCase()} report submitted! Awaiting university mentor assignment.`,
         });
       } else {
         setToast({ type: 'success', message: 'Issue submitted successfully!' });
@@ -597,6 +602,77 @@ export default function ReportIssue() {
         )}
 
         <form onSubmit={handleSubmit} noValidate className="space-y-6">
+          {/* Target Entity Selector (Route To) */}
+          <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                <span>🎯 Route Problem To</span>
+                <span className="text-red-500">*</span>
+              </label>
+              <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md">
+                Direct CMS Routing
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <button
+                type="button"
+                onClick={() => setTargetEntity('govt')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 ${
+                  targetEntity === 'govt'
+                    ? 'bg-purple-700 text-white border-purple-800 shadow-md ring-2 ring-purple-300'
+                    : 'bg-white text-[var(--ink)] border-[var(--line)] hover:border-purple-300 hover:bg-purple-50/40'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-lg">🏛️</span>
+                  {targetEntity === 'govt' && <span className="text-xs font-bold">✓ Selected</span>}
+                </div>
+                <div className="font-extrabold text-xs">Government Dept</div>
+                <div className={`text-[10px] line-clamp-2 leading-tight ${targetEntity === 'govt' ? 'text-purple-100' : 'text-[var(--ink-soft)]'}`}>
+                  Municipal, Roads, Water, Electricity, Sanitation
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTargetEntity('university')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 ${
+                  targetEntity === 'university'
+                    ? 'bg-purple-700 text-white border-purple-800 shadow-md ring-2 ring-purple-300'
+                    : 'bg-white text-[var(--ink)] border-[var(--line)] hover:border-purple-300 hover:bg-purple-50/40'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-lg">🎓</span>
+                  {targetEntity === 'university' && <span className="text-xs font-bold">✓ Selected</span>}
+                </div>
+                <div className="font-extrabold text-xs">University / HEI</div>
+                <div className={`text-[10px] line-clamp-2 leading-tight ${targetEntity === 'university' ? 'text-purple-100' : 'text-[var(--ink-soft)]'}`}>
+                  R&D, Technical Innovation, Faculty Mentors & Student Teams
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTargetEntity('industry')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 ${
+                  targetEntity === 'industry'
+                    ? 'bg-purple-700 text-white border-purple-800 shadow-md ring-2 ring-purple-300'
+                    : 'bg-white text-[var(--ink)] border-[var(--line)] hover:border-purple-300 hover:bg-purple-50/40'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-lg">🏢</span>
+                  {targetEntity === 'industry' && <span className="text-xs font-bold">✓ Selected</span>}
+                </div>
+                <div className="font-extrabold text-xs">Industry / CSR</div>
+                <div className={`text-[10px] line-clamp-2 leading-tight ${targetEntity === 'industry' ? 'text-purple-100' : 'text-[var(--ink-soft)]'}`}>
+                  Corporate Grants, Private Funding, MSME Co-development
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* Issue Title */}
           <div>
             <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
@@ -623,54 +699,74 @@ export default function ReportIssue() {
             )}
           </div>
 
-          {/* Category & District Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
-                  Category <span className="text-red-500">*</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={handleAiCategorize}
-                  disabled={aiSuggesting}
-                  className="text-[11px] font-extrabold text-[var(--brand)] hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  {aiSuggesting ? '🤖 Analyzing...' : '✨ AI Auto-Categorize'}
-                </button>
-              </div>
-              <select
-                value={category}
-                onChange={handleCategoryChange}
-                className={`w-full px-4 py-3 rounded-xl border bg-white text-sm focus:outline-none transition-all font-medium text-[var(--ink)] ${
-                  fieldErrors.category
-                    ? 'border-red-400 focus:ring-2 focus:ring-red-400 bg-red-50/20'
-                    : 'border-[var(--line)] focus:ring-2 focus:ring-[var(--brand)]'
-                }`}
+          {/* Problem Category Selection Grid */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-[var(--ink)] uppercase tracking-wider flex items-center gap-1.5">
+                <span>📋 Select Problem Category</span>
+                <span className="text-red-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={handleAiCategorize}
+                disabled={aiSuggesting}
+                className="text-[11px] font-extrabold text-[var(--brand)] hover:underline flex items-center gap-1 cursor-pointer bg-[var(--brand)]/10 px-2.5 py-1 rounded-lg"
               >
-                <option value="">-- Select Category --</option>
-                {CATEGORIES.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
-              {aiSuggestedCat && (
-                <span className="mt-1.5 text-[11px] bg-teal-50 text-teal-800 font-bold px-2 py-0.5 rounded-md border border-teal-200 inline-flex items-center gap-1">
-                  🤖 AI Auto-suggested: {CATEGORIES.find((c) => c.value === aiSuggestedCat)?.label || aiSuggestedCat}
-                </span>
-              )}
-              {fieldErrors.category && (
-                <p className="mt-1.5 text-xs text-red-600 font-semibold flex items-center gap-1">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {fieldErrors.category}
-                </p>
-              )}
+                {aiSuggesting ? '🤖 Analyzing Problem...' : '✨ AI Auto-Categorize'}
+              </button>
             </div>
 
-            <div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {CATEGORIES.map((cat) => {
+                const isSelected = category === cat.value;
+                return (
+                  <button
+                    key={cat.value}
+                    type="button"
+                    onClick={() => {
+                      setCategory(cat.value);
+                      if (submitAttempted) validateForm(title, description, cat.value, district, area);
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 shadow-xs ${
+                      isSelected
+                        ? 'bg-[var(--brand)] text-white border-[var(--brand)] shadow-md ring-2 ring-[var(--brand)]/30 scale-[1.02]'
+                        : 'bg-white text-[var(--ink)] border-[var(--line)] hover:border-[var(--brand)] hover:bg-[var(--bg)]/40'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xl">{cat.icon}</span>
+                      {isSelected && <span className="text-[10px] font-extrabold bg-white/20 px-1.5 py-0.5 rounded">✓ Selected</span>}
+                    </div>
+                    <div>
+                      <div className="font-black text-xs leading-tight">{cat.label}</div>
+                      <div className={`text-[10px] line-clamp-1 mt-0.5 ${isSelected ? 'text-white/80' : 'text-[var(--ink-soft)]'}`}>
+                        {cat.desc}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {aiSuggestedCat && (
+              <div className="mt-1.5 text-[11px] bg-teal-50 text-teal-800 font-bold px-3 py-1.5 rounded-xl border border-teal-200 inline-flex items-center gap-1.5">
+                <span>🤖 AI Suggested:</span>
+                <span className="underline">{CATEGORIES.find((c) => c.value === aiSuggestedCat)?.label || aiSuggestedCat}</span>
+              </div>
+            )}
+
+            {fieldErrors.category && (
+              <p className="mt-1.5 text-xs text-red-600 font-semibold flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {fieldErrors.category}
+              </p>
+            )}
+          </div>
+
+          {/* District Selection */}
+          <div>
               <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
                 District <span className="text-red-500">*</span>
               </label>
@@ -699,7 +795,6 @@ export default function ReportIssue() {
                 </p>
               )}
             </div>
-          </div>
 
           {/* Area / Locality Chip Picker (Driven by Map Pin reverse-geocoding) */}
           <div className="p-4 rounded-2xl bg-purple-50/40 border border-purple-100 space-y-3">

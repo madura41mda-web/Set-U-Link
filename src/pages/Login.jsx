@@ -74,6 +74,86 @@ export default function Login() {
           </p>
         </div>
 
+        {/* Clean 4-Role Selector */}
+        <div className="space-y-3">
+          <label className="text-xs font-black text-[var(--ink)] uppercase tracking-wider block">
+            Select User Role / Quick Demo
+          </label>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('citizen1@setulink.in');
+                setPassword('Password123!');
+              }}
+              className="p-3 rounded-2xl border text-left transition-all cursor-pointer bg-white hover:border-[var(--brand)] hover:bg-[var(--bg)]/40 flex flex-col justify-between gap-1 shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xl">👤</span>
+                <span className="text-[10px] font-extrabold text-[var(--brand)] bg-[var(--brand)]/10 px-1.5 py-0.5 rounded">Fill</span>
+              </div>
+              <div>
+                <div className="font-black text-xs text-[var(--ink)]">Citizen Reporter</div>
+                <div className="text-[10px] text-[var(--ink-soft)]">Report & Track Issues</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('gov.admin1@setulink.in');
+                setPassword('Password123!');
+              }}
+              className="p-3 rounded-2xl border text-left transition-all cursor-pointer bg-white hover:border-blue-500 hover:bg-blue-50/40 flex flex-col justify-between gap-1 shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xl">🏛️</span>
+                <span className="text-[10px] font-extrabold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">Fill</span>
+              </div>
+              <div>
+                <div className="font-black text-xs text-[var(--ink)]">Govt Official</div>
+                <div className="text-[10px] text-[var(--ink-soft)]">Triage & Sanction</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('uni.admin1@setulink.in');
+                setPassword('Password123!');
+              }}
+              className="p-3 rounded-2xl border text-left transition-all cursor-pointer bg-white hover:border-purple-500 hover:bg-purple-50/40 flex flex-col justify-between gap-1 shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xl">🎓</span>
+                <span className="text-[10px] font-extrabold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">Fill</span>
+              </div>
+              <div>
+                <div className="font-black text-xs text-[var(--ink)]">University Admin</div>
+                <div className="text-[10px] text-[var(--ink-soft)]">Mentors & R&D Teams</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('ind.admin1@setulink.in');
+                setPassword('Password123!');
+              }}
+              className="p-3 rounded-2xl border text-left transition-all cursor-pointer bg-white hover:border-emerald-500 hover:bg-emerald-50/40 flex flex-col justify-between gap-1 shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xl">🏢</span>
+                <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Fill</span>
+              </div>
+              <div>
+                <div className="font-black text-xs text-[var(--ink)]">Industry / CSR</div>
+                <div className="text-[10px] text-[var(--ink-soft)]">CSR Grants & Pilots</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
         {error && (
           <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-2.5">
             <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">

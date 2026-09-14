@@ -41,8 +41,8 @@ export async function matchIssue(issueId, changedByUserId) {
     throw new Error('Issue not found for matching');
   }
 
-  // Fetch candidate orgs in district
-  const { data: orgs, error: orgsError } = await supabase
+  // Fetch candidate orgs in district first
+  let { data: orgs, error: orgsError } = await supabase
     .from('organizations')
     .select('*')
     .eq('district', issue.district);
@@ -50,16 +50,30 @@ export async function matchIssue(issueId, changedByUserId) {
   if (orgsError) throw orgsError;
 
   // Filter orgs with matching category tag
-  const candidateOrgs = (orgs || []).filter((org) => {
+  let candidateOrgs = (orgs || []).filter((org) => {
     const tags = org.category_tags || [];
     return tags.includes(issue.category);
   });
+
+  // Statewide Fallback: If no local district org match, search all Jharkhand orgs with category tag
+  if (candidateOrgs.length === 0) {
+    const { data: allOrgs } = await supabase
+      .from('organizations')
+      .select('*');
+
+    if (allOrgs) {
+      candidateOrgs = allOrgs.filter((org) => {
+        const tags = org.category_tags || [];
+        return tags.includes(issue.category);
+      });
+    }
+  }
 
   if (candidateOrgs.length === 0) {
     return {
       matched: false,
       matches: [],
-      reason: `No matching organizations found in ${issue.district} for category '${issue.category}'`,
+      reason: `No matching organizations found statewide for category '${issue.category}'`,
     };
   }
 

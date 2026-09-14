@@ -8,6 +8,7 @@ export default function SignUp() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [selectedRole, setSelectedRole] = useState('citizen');
   const [submitting, setSubmitting] = useState(false);
 
   const { signUp } = useAuth();
@@ -62,6 +63,86 @@ export default function SignUp() {
           </p>
         </div>
 
+        {/* 4 Role Selection Cards */}
+        <div className="space-y-2">
+          <label className="text-xs font-black text-[var(--ink)] uppercase tracking-wider block">
+            Register As
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedRole('citizen')}
+              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${
+                selectedRole === 'citizen'
+                  ? 'bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm'
+                  : 'bg-white text-[var(--ink)] border-[var(--line)] hover:bg-[var(--bg)]/40'
+              }`}
+            >
+              <span className="text-lg">👤</span>
+              <div>
+                <div className="font-extrabold text-xs">Citizen</div>
+                <div className={`text-[10px] ${selectedRole === 'citizen' ? 'text-white/80' : 'text-[var(--ink-soft)]'}`}>
+                  Report Issues
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedRole('govt')}
+              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${
+                selectedRole === 'govt'
+                  ? 'bg-blue-700 text-white border-blue-800 shadow-sm'
+                  : 'bg-white text-[var(--ink)] border-[var(--line)] hover:bg-blue-50/40'
+              }`}
+            >
+              <span className="text-lg">🏛️</span>
+              <div>
+                <div className="font-extrabold text-xs">Govt Official</div>
+                <div className={`text-[10px] ${selectedRole === 'govt' ? 'text-blue-100' : 'text-[var(--ink-soft)]'}`}>
+                  Triage & Sanction
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedRole('university')}
+              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${
+                selectedRole === 'university'
+                  ? 'bg-purple-700 text-white border-purple-800 shadow-sm'
+                  : 'bg-white text-[var(--ink)] border-[var(--line)] hover:bg-purple-50/40'
+              }`}
+            >
+              <span className="text-lg">🎓</span>
+              <div>
+                <div className="font-extrabold text-xs">University</div>
+                <div className={`text-[10px] ${selectedRole === 'university' ? 'text-purple-100' : 'text-[var(--ink-soft)]'}`}>
+                  Faculty & R&D
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedRole('industry')}
+              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${
+                selectedRole === 'industry'
+                  ? 'bg-emerald-700 text-white border-emerald-800 shadow-sm'
+                  : 'bg-white text-[var(--ink)] border-[var(--line)] hover:bg-emerald-50/40'
+              }`}
+            >
+              <span className="text-lg">🏢</span>
+              <div>
+                <div className="font-extrabold text-xs">Industry / CSR</div>
+                <div className={`text-[10px] ${selectedRole === 'industry' ? 'text-emerald-100' : 'text-[var(--ink-soft)]'}`}>
+                  Grants & Pilots
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+
         {error && (
           <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-2.5">
             <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -71,7 +152,7 @@ export default function SignUp() {
           </div>
         )}
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
               Full Name
