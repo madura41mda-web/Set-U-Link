@@ -23,19 +23,26 @@ const ROLE_BADGES = {
   govt: { label: 'Government Agency', style: 'bg-amber-50 text-amber-800 border-amber-200' },
 };
 
-export default function StatusTracker({ status = 'reported', statusHistory = [], matches = [] }) {
-  const safeHistory = Array.isArray(statusHistory) ? statusHistory : [];
-  const safeMatches = Array.isArray(matches) ? matches : [];
+export default function StatusTracker({ status, statusHistory, matches, issue }) {
+  const currentStatus = status || issue?.status || 'reported';
+  const rawHistory = statusHistory || issue?.status_history || [];
+  const rawMatches = matches || issue?.matches || [];
+
+  const safeHistory = Array.isArray(rawHistory) ? rawHistory : [];
+  const safeMatches = Array.isArray(rawMatches) ? rawMatches : [];
 
   // Determine current active stage index (0 to 4)
   const currentStageIndex = useMemo(() => {
-    return STAGE_WEIGHT[status] ?? 0;
-  }, [status]);
+    return STAGE_WEIGHT[currentStatus] ?? 0;
+  }, [currentStatus]);
 
   const progressPercent = Math.round((currentStageIndex / (VISUAL_STAGES.length - 1)) * 100);
 
-  // Helper to find timestamp for a visual stage from statusHistory
-  const getStageTimestamp = (visualStage) => {
+  // Helper to find timestamp for a visual stage from statusHistory (only for reached stages)
+  const getStageTimestamp = (visualStageIndex, visualStage) => {
+    if (visualStageIndex > currentStageIndex) {
+      return null;
+    }
     const matchingRow = safeHistory
       .filter((h) => visualStage.dbStages.includes(h.stage))
       .sort((a, b) => new Date(b.changed_at || 0) - new Date(a.changed_at || 0))[0];
@@ -71,10 +78,9 @@ export default function StatusTracker({ status = 'reported', statusHistory = [],
       {/* Stepper Timeline */}
       <div className="space-y-4">
         {VISUAL_STAGES.map((s, i) => {
-          const isDone = i < currentStageIndex;
-          const isCurrent = i === currentStageIndex;
-
-          const timestamp = getStageTimestamp(s);
+          const timestamp = getStageTimestamp(i, s);
+          const isDone = i < currentStageIndex || (currentStatus === 'resolved' && i === 4);
+          const isCurrent = i === currentStageIndex && currentStatus !== 'resolved';
 
           let dotClass = 'bg-gray-200 border-gray-300 text-gray-400';
           let titleClass = 'text-gray-400 font-medium';
