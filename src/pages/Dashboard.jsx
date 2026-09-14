@@ -31,6 +31,8 @@ export default function Dashboard() {
     totalReports: 0,
     resolvedReports: 0,
     inProgressReports: 0,
+    universityParticipation: 0,
+    industryCollaboration: 0,
     avgResolutionDays: '3.5',
     resolutionRate: '0.0',
     inProgressRate: '0.0',
@@ -69,6 +71,42 @@ export default function Dashboard() {
         const { data: historyList } = await supabase
           .from('status_history')
           .select('issue_id, stage, changed_at');
+
+        // 6. Matches & Organizations for University Participation & Industry Collaboration
+        const { data: matchesData } = await supabase
+          .from('matches')
+          .select('org_id, organizations(id, type)');
+
+        const { data: orgsData } = await supabase
+          .from('organizations')
+          .select('id, type');
+
+        const uniOrgs = new Set();
+        const industryOrgs = new Set();
+
+        const orgTypeMap = {};
+        if (orgsData) {
+          orgsData.forEach((o) => {
+            if (o.id && o.type) orgTypeMap[o.id] = o.type;
+          });
+        }
+
+        if (matchesData) {
+          matchesData.forEach((m) => {
+            const orgId = m.org_id;
+            const orgType = (Array.isArray(m.organizations)
+              ? m.organizations[0]?.type
+              : m.organizations?.type) || orgTypeMap[orgId];
+
+            if (orgId && orgType) {
+              if (orgType === 'university') {
+                uniOrgs.add(orgId);
+              } else if (['csr', 'startup', 'msme'].includes(orgType)) {
+                industryOrgs.add(orgId);
+              }
+            }
+          });
+        }
 
         const totalNum = total || 0;
         const resolvedNum = resolved || 0;
@@ -123,6 +161,8 @@ export default function Dashboard() {
           totalReports: totalNum,
           resolvedReports: resolvedNum,
           inProgressReports: inProgressNum,
+          universityParticipation: uniOrgs.size,
+          industryCollaboration: industryOrgs.size,
           avgResolutionDays: avgDaysStr,
           resolutionRate: resRate,
           inProgressRate: progRate,
@@ -161,7 +201,7 @@ export default function Dashboard() {
           </div>
 
           {/* Stat cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
             <StatCard label="Total Reports" trend="▲ Live from DB" trendColor="good" counter>
               <Counter target={metrics.totalReports} />
             </StatCard>
@@ -171,8 +211,11 @@ export default function Dashboard() {
             <StatCard label="In Progress" trend={`${metrics.inProgressRate}% active pipeline`} trendColor="accent" delay={2} counter>
               <Counter target={metrics.inProgressReports} />
             </StatCard>
-            <StatCard label="Avg Resolution" trend="▼ Computed live" trendColor="good" delay={3}>
-              {metrics.avgResolutionDays}<span className="text-base font-semibold text-[var(--ink-soft)]"> days</span>
+            <StatCard label="University Participation" trend="Academic partners" trendColor="good" delay={3} counter>
+              <Counter target={metrics.universityParticipation} />
+            </StatCard>
+            <StatCard label="Industry Collaboration" trend="CSR, Startups & MSMEs" trendColor="accent" delay={4} counter>
+              <Counter target={metrics.industryCollaboration} />
             </StatCard>
           </div>
 

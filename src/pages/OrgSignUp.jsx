@@ -9,9 +9,15 @@ const ORG_TYPES = [
   { value: 'startup', label: 'Tech Startup / Innovation Partner' },
   { value: 'msme', label: 'Local Enterprise / MSME' },
   { value: 'govt', label: 'Government Agency / Department' },
+  { value: 'research_institution', label: 'Research Institution / Innovation Hub' },
 ];
 
 const DISTRICTS = ['Ranchi', 'Dhanbad', 'East Singhbhum', 'Bokaro', 'Hazaribagh', 'Deoghar', 'Giridih', 'Ramgarh', 'West Singhbhum'];
+
+const ORG_SIGNUP_ALLOWLIST = {
+  'madura41mda@gmail.com': ['university'],
+  'madura.0741@gmail.com': ['csr', 'startup', 'msme', 'govt', 'research_institution'],
+};
 
 export default function OrgSignUp() {
   const location = useLocation();
@@ -49,6 +55,19 @@ export default function OrgSignUp() {
 
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const allowedTypes = ORG_SIGNUP_ALLOWLIST[cleanEmail];
+
+    if (!allowedTypes) {
+      setError('This email address is not authorized to register an organization account.');
+      return;
+    }
+
+    if (!allowedTypes.includes(orgType)) {
+      setError(`This email is not authorized for the selected organization type. Allowed organization type(s): ${allowedTypes.join(', ')}.`);
       return;
     }
 

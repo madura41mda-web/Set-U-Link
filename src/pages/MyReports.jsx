@@ -35,6 +35,13 @@ const STATUS_BADGES = {
   resolved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
 };
 
+const OUTCOME_TYPES = [
+  { value: 'deployed_solution', label: 'Deployed Solution' },
+  { value: 'research_output', label: 'Research Output' },
+  { value: 'pilot_test', label: 'Pilot Test' },
+  { value: 'policy_change', label: 'Policy Change' },
+];
+
 export default function MyReports() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
@@ -46,6 +53,7 @@ export default function MyReports() {
   const [selectedDetailIssue, setSelectedDetailIssue] = useState(null);
   const [adminViewMode, setAdminViewMode] = useState(false);
   const [advancingId, setAdvancingId] = useState(null);
+  const [outcomeTypes, setOutcomeTypes] = useState({}); // { [issueId]: string }
   const [toast, setToast] = useState(null);
 
   const isAdmin = profile?.role === 'admin';
@@ -175,13 +183,17 @@ export default function MyReports() {
       if (issueError) throw issueError;
 
       // 2. Insert into status_history
+      const selectedOutcome = nextStage === 'resolved'
+        ? (outcomeTypes[issue.id] || 'deployed_solution')
+        : null;
+
       const { error: historyError } = await supabase
         .from('status_history')
         .insert([
           {
             issue_id: issue.id,
             stage: nextStage,
-            outcome_type: nextStage === 'resolved' ? 'deployed_solution' : null,
+            outcome_type: selectedOutcome,
             changed_by: profile?.id || user.id,
           },
         ]);
@@ -457,20 +469,38 @@ export default function MyReports() {
                     {/* Admin Advance Button */}
                     <RoleGate allowedRoles={['admin']}>
                       {nextStage && (
-                        <button
-                          onClick={(e) => handleAdvanceStatus(e, issue)}
-                          disabled={advancingId === issue.id}
-                          className="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 transition-all cursor-pointer shrink-0"
-                          title={`Advance status from ${issue.status} to ${nextStage}`}
-                        >
-                          {advancingId === issue.id ? (
-                            'Processing...'
-                          ) : nextStage === 'validated' ? (
-                            '⚡ Validate & Run Matching Engine'
-                          ) : (
-                            `⚡ Advance to ${STAGE_LABELS[nextStage]}`
+                        <div className="flex items-center gap-2">
+                          {nextStage === 'resolved' && (
+                            <select
+                              value={outcomeTypes[issue.id] || 'deployed_solution'}
+                              onChange={(e) => setOutcomeTypes({ ...outcomeTypes, [issue.id]: e.target.value })}
+                              onClick={(e) => e.stopPropagation()}
+                              className="px-2.5 py-2 rounded-xl border border-purple-200 bg-white text-xs font-semibold text-purple-950 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-sm"
+                              title="Select outcome type for resolution"
+                            >
+                              {OUTCOME_TYPES.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
                           )}
-                        </button>
+
+                          <button
+                            onClick={(e) => handleAdvanceStatus(e, issue)}
+                            disabled={advancingId === issue.id}
+                            className="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 transition-all cursor-pointer shrink-0"
+                            title={`Advance status from ${issue.status} to ${nextStage}`}
+                          >
+                            {advancingId === issue.id ? (
+                              'Processing...'
+                            ) : nextStage === 'validated' ? (
+                              '⚡ Validate & Run Matching Engine'
+                            ) : (
+                              `⚡ Advance to ${STAGE_LABELS[nextStage]}`
+                            )}
+                          </button>
+                        </div>
                       )}
                     </RoleGate>
 
@@ -705,7 +735,7 @@ export default function MyReports() {
             {/* Official Organization Updates / Responses */}
             {(() => {
               const orgComments = (selectedDetailIssue.comments || []).filter(
-                (c) => c.is_org_update || c.body?.startsWith('[Org Update') || c.profiles?.role === 'org_rep'
+                (c) => c.is_org_update || c.body?.startsWith('[Org Update') || c.body?.startsWith('🎓 Mentor/Team Assigned:') || c.profiles?.role === 'org_rep'
               );
 
               if (orgComments.length === 0) return null;
@@ -719,7 +749,38 @@ export default function MyReports() {
 
                   <div className="space-y-2.5">
                     {orgComments.map((comment) => {
+                      const isTeamAssigned = comment.body?.startsWith('🎓 Mentor/Team Assigned:');
                       const orgName = comment.profiles?.organizations?.name || selectedDetailIssue.matches?.[0]?.organizations?.name || 'Partner Organization';
+
+                      if (isTeamAssigned) {
+                        return (
+                          <div key={comment.id} className="p-4 rounded-2xl bg-indigo-50/90 border border-indigo-200 space-y-1.5 shadow-sm">
+                            <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+                              <div className="flex items-center gap-2">
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-600 text-white shadow-xs">
+                                  Team Assigned
+                                </span>
+                                <span className="font-extrabold text-indigo-950">
+                                  Update from {orgName}
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-mono text-indigo-700 bg-indigo-100/70 px-2 py-0.5 rounded-full">
+                                {new Date(comment.created_at).toLocaleString('en-IN', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
+                            <p className="text-xs text-indigo-950 leading-relaxed font-semibold whitespace-pre-wrap pt-0.5">
+                              {comment.body}
+                            </p>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div key={comment.id} className="p-4 rounded-2xl bg-purple-50/80 border border-purple-200 space-y-1.5 shadow-sm">
                           <div className="flex items-center justify-between gap-2 flex-wrap text-xs">

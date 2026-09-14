@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../lib/supabaseClient.js';
 import StatusTracker from '../components/StatusTracker.jsx';
@@ -24,6 +24,13 @@ const STATUS_BADGES = {
   resolved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
 };
 
+const OUTCOME_TYPES = [
+  { value: 'deployed_solution', label: 'Deployed Solution' },
+  { value: 'research_output', label: 'Research Output' },
+  { value: 'pilot_test', label: 'Pilot Test' },
+  { value: 'policy_change', label: 'Policy Change' },
+];
+
 export default function OrgDashboard() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
@@ -33,8 +40,9 @@ export default function OrgDashboard() {
   const [fetching, setFetching] = useState(true);
   const [updatingIssueId, setUpdatingIssueId] = useState(null);
   const [commentInput, setCommentInput] = useState({}); // { [issueId]: string }
+  const [mentorInput, setMentorInput] = useState({}); // { [issueId]: string }
+  const [outcomeTypes, setOutcomeTypes] = useState({}); // { [issueId]: string }
   const [toast, setToast] = useState(null);
-  const [selectedIssueModal, setSelectedIssueModal] = useState(null);
 
   // Auth & role check
   useEffect(() => {
@@ -102,13 +110,17 @@ export default function OrgDashboard() {
       if (issueErr) throw issueErr;
 
       // 2. Add status_history row
+      const selectedOutcome = targetStage === 'resolved'
+        ? (outcomeTypes[issue.id] || 'deployed_solution')
+        : 'pilot_test';
+
       const { error: historyErr } = await supabase
         .from('status_history')
         .insert([
           {
             issue_id: issue.id,
             stage: targetStage,
-            outcome_type: targetStage === 'resolved' ? 'deployed_solution' : 'pilot_test',
+            outcome_type: selectedOutcome,
             changed_by: user.id,
           },
         ]);
@@ -182,6 +194,37 @@ export default function OrgDashboard() {
     } catch (err) {
       console.error('Comment error:', err);
       setToast({ type: 'error', message: err.message || 'Failed to add comment.' });
+    } finally {
+      setUpdatingIssueId(null);
+    }
+  };
+
+  // Handle assigning mentor/team (Module 3 - University Collaboration)
+  const handleAssignMentor = async (issueId) => {
+    const text = mentorInput[issueId];
+    if (!text || !text.trim()) return;
+
+    try {
+      setUpdatingIssueId(issueId);
+      const formattedBody = `🎓 Mentor/Team Assigned: ${text.trim()}`;
+
+      const { error } = await supabase.from('comments').insert([
+        {
+          issue_id: issueId,
+          author_id: user.id,
+          body: formattedBody,
+          is_org_update: true,
+        },
+      ]);
+
+      if (error) throw error;
+
+      setToast({ type: 'success', message: 'Mentor / Team assigned successfully!' });
+      setMentorInput((prev) => ({ ...prev, [issueId]: '' }));
+      await loadOrgData();
+    } catch (err) {
+      console.error('Mentor assignment error:', err);
+      setToast({ type: 'error', message: err.message || 'Failed to assign mentor/team.' });
     } finally {
       setUpdatingIssueId(null);
     }
@@ -292,13 +335,28 @@ export default function OrgDashboard() {
                       )}
 
                       {issue.status !== 'resolved' && (
-                        <button
-                          onClick={() => handleUpdateStatus(issue, 'resolved')}
-                          disabled={updatingIssueId === issue.id}
-                          className="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all cursor-pointer"
-                        >
-                          ✅ Mark as Resolved
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={outcomeTypes[issue.id] || 'deployed_solution'}
+                            onChange={(e) => setOutcomeTypes({ ...outcomeTypes, [issue.id]: e.target.value })}
+                            className="px-2.5 py-2 rounded-xl border border-emerald-200 bg-white text-xs font-semibold text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-sm"
+                            title="Select outcome type for resolution"
+                          >
+                            {OUTCOME_TYPES.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+
+                          <button
+                            onClick={() => handleUpdateStatus(issue, 'resolved')}
+                            disabled={updatingIssueId === issue.id}
+                            className="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all cursor-pointer shrink-0"
+                          >
+                            ✅ Mark as Resolved
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -334,6 +392,29 @@ export default function OrgDashboard() {
                             className="px-4 py-2 rounded-xl text-xs font-extrabold bg-purple-700 hover:bg-purple-800 text-white shadow-md disabled:opacity-40 transition-all cursor-pointer shrink-0"
                           >
                             Post
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Assign Team / Mentor Form (Module 3) */}
+                      <div className="p-4 rounded-2xl bg-indigo-50/40 border border-indigo-100 space-y-2">
+                        <label className="block text-xs font-bold text-indigo-950 uppercase tracking-wider">
+                          🎓 Assign Team / Mentor
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={mentorInput[issue.id] || ''}
+                            onChange={(e) => setMentorInput({ ...mentorInput, [issue.id]: e.target.value })}
+                            placeholder="e.g. Dr. Ananya Roy + 3 students, Dept. of CS"
+                            className="flex-1 px-3.5 py-2 rounded-xl border border-indigo-200 bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <button
+                            onClick={() => handleAssignMentor(issue.id)}
+                            disabled={updatingIssueId === issue.id || !mentorInput[issue.id]?.trim()}
+                            className="px-4 py-2 rounded-xl text-xs font-extrabold bg-indigo-700 hover:bg-indigo-800 text-white shadow-md disabled:opacity-40 transition-all cursor-pointer shrink-0"
+                          >
+                            Assign Team
                           </button>
                         </div>
                       </div>
