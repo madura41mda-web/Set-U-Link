@@ -86,7 +86,7 @@ export default function Demo() {
               <div>
                 <div className="section-tag mb-3">Interactive Demo</div>
                 <h2 className="text-3xl lg:text-4xl font-bold mb-3">Report an issue. Watch it resolve.</h2>
-                <p className="text-[var(--ink-soft)]">A simulated end-to-end flow — no backend required.</p>
+                <p className="text-[var(--ink-soft)]">An interactive end-to-end civic issue reporting flow.</p>
               </div>
             </Reveal>
           </div>

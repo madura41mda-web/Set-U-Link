@@ -1,0 +1,525 @@
+﻿
+  ! eslint(no-unused-vars): Identifier 'pg' is imported but never used.
+   ,-[scripts/test_pg_sql.js:1:8]
+ 1 | import pg from 'pg';
+   :        ^|
+   :         `-- 'pg' is imported here
+ 2 | import fs from 'fs';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Variable 'hosts' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_pg_sql.js:23:7]
+ 22 | // Supabase connection formats
+ 23 | const hosts = [
+    :       ^^|^^
+    :         `-- 'hosts' is declared here
+ 24 |   'db.uhmykasatoyspdfogygg.supabase.co',
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'lErr' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/inspect_policies_sql.js:34:34]
+ 33 |   // Let's check what happens if we query `issues` as userClient (SELECT)
+ 34 |   const { data: userLink, error: lErr } = await adminClient.auth.admin.generateLink({
+    :                                  ^^|^
+    :                                    `-- 'lErr' is declared here
+ 35 |     type: 'magiclink',
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Catch parameter 'e' is caught but never used.
+     ,-[scripts/verify_feature_set_2.js:204:14]
+ 203 |       }
+ 204 |     } catch (e) {
+     :              |
+     :              `-- 'e' is declared here
+ 205 |       ownVoteBlocked = true;
+     `----
+  help: Consider handling this error.
+
+  ! eslint(no-unused-vars): Variable 'anonKey' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/verify_parts_1_2_3.js:22:7]
+ 21 | const serviceRoleKey = envVars['SUPABASE_SERVICE_ROLE_KEY'];
+ 22 | const anonKey = envVars['VITE_SUPABASE_ANON_KEY'];
+    :       ^^^|^^^
+    :          `-- 'anonKey' is declared here
+ 23 | 
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'createRpcSql' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/inspect_all_policies.js:29:9]
+ 28 |   // Let's create an rpc to query pg_policies
+ 29 |   const createRpcSql = `
+    :         ^^^^^^|^^^^^
+    :               `-- 'createRpcSql' is declared here
+ 30 |     CREATE OR REPLACE FUNCTION public.get_pg_policies()
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'userId' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_policy_update.js:29:9]
+ 28 |   // Let's test what happens when we update an issue as userClient
+ 29 |   const userId = 'ad16efea-d81f-4542-a68a-eee609c04ef6';
+    :         ^^^|^^
+    :            `-- 'userId' is declared here
+ 30 |   const issueId = 'f9602a68-66a2-485e-9fbd-6a6157fcd7f1';
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'err1' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/diagnose_delete_and_duplicates.js:30:40]
+ 29 |   // 1. Search for "jaynagar" or "pothole" or duplicates in DB
+ 30 |   const { data: jaynagarIssues, error: err1 } = await adminClient
+    :                                        ^^|^
+    :                                          `-- 'err1' is declared here
+ 31 |     .from('issues')
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'err1' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_phase_a_aggregates.js:28:37]
+ 27 |   // 1. Total Issues Count
+ 28 |   const { count: totalCount, error: err1 } = await adminClient
+    :                                     ^^|^
+    :                                       `-- 'err1' is declared here
+ 29 |     .from('issues')
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'err2' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_phase_a_aggregates.js:33:40]
+ 32 |   // 2. Resolved Count
+ 33 |   const { count: resolvedCount, error: err2 } = await adminClient
+    :                                        ^^|^
+    :                                          `-- 'err2' is declared here
+ 34 |     .from('issues')
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'err3' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_phase_a_aggregates.js:39:42]
+ 38 |   // 3. In Progress Count (validated, matched, sanctioned, in_progress)
+ 39 |   const { count: inProgressCount, error: err3 } = await adminClient
+    :                                          ^^|^
+    :                                            `-- 'err3' is declared here
+ 40 |     .from('issues')
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'err4' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_phase_a_aggregates.js:45:38]
+ 44 |   // 4. Category breakdown
+ 45 |   const { data: categoryData, error: err4 } = await adminClient
+    :                                      ^^|^
+    :                                        `-- 'err4' is declared here
+ 46 |     .from('issues')
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'err5' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_phase_a_aggregates.js:50:38]
+ 49 |   // 5. District breakdown
+ 50 |   const { data: districtData, error: err5 } = await adminClient
+    :                                      ^^|^
+    :                                        `-- 'err5' is declared here
+ 51 |     .from('issues')
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'err6' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_phase_a_aggregates.js:55:37]
+ 54 |   // 6. Status History for Avg Resolution Time
+ 55 |   const { data: historyData, error: err6 } = await adminClient
+    :                                     ^^|^
+    :                                       `-- 'err6' is declared here
+ 56 |     .from('status_history')
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'err7' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_phase_a_aggregates.js:59:36]
+ 58 | 
+ 59 |   const { data: issuesData, error: err7 } = await adminClient
+    :                                    ^^|^
+    :                                      `-- 'err7' is declared here
+ 60 |     .from('issues')
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'matches' is declared but never used. Unused variables should start with a '_'.
+     ,-[scripts/verify_all_phases.js:130:19]
+ 129 |     const { data: orgs } = await adminClient.from('organizations').select('id');
+ 130 |     const { data: matches } = await adminClient.from('organizations').select('id');
+     :                   ^^^|^^^
+     :                      `-- 'matches' is declared here
+ 131 |     assert.ok(orgs.length >= 10, 'Should have ~10 organizations in DB');
+     `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'anonKey' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_photo_upload.js:21:7]
+ 20 | const serviceRoleKey = envVars['SUPABASE_SERVICE_ROLE_KEY'];
+ 21 | const anonKey = envVars['VITE_SUPABASE_ANON_KEY'];
+    :       ^^^|^^^
+    :          `-- 'anonKey' is declared here
+ 22 | 
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'issueId' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_user_delete_response.js:27:9]
+ 26 | 
+ 27 |   const issueId = 'f9602a68-66a2-485e-9fbd-6a6157fcd7f1';
+    :         ^^^|^^^
+    :            `-- 'issueId' is declared here
+ 28 |   const reporterId = 'ad16efea-d81f-4542-a68a-eee609c04ef6';
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'serviceRoleKey' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_upvote_execution.js:20:7]
+ 19 | const supabaseUrl = envVars['VITE_SUPABASE_URL'];
+ 20 | const serviceRoleKey = envVars['SUPABASE_SERVICE_ROLE_KEY'];
+    :       ^^^^^^^|^^^^^^
+    :              `-- 'serviceRoleKey' is declared here
+ 21 | const anonKey = envVars['VITE_SUPABASE_ANON_KEY'];
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Identifier 'pg' is imported but never used.
+   ,-[scripts/test_db_connection_all.js:1:8]
+ 1 | import pg from 'pg';
+   :        ^|
+   :         `-- 'pg' is imported here
+ 2 | import fs from 'fs';
+   `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Variable 'userId' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_cascade_policy.js:28:9]
+ 27 | 
+ 28 |   const userId = 'ad16efea-d81f-4542-a68a-eee609c04ef6';
+    :         ^^^|^^
+    :            `-- 'userId' is declared here
+ 29 |   const issueId = 'f9602a68-66a2-485e-9fbd-6a6157fcd7f1';
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'userId' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/test_real_user_delete.js:28:9]
+ 27 | 
+ 28 |   const userId = 'ad16efea-d81f-4542-a68a-eee609c04ef6'; // madura41mda@gmail.com
+    :         ^^^|^^
+    :            `-- 'userId' is declared here
+ 29 |   const targetIssueId = 'f9602a68-66a2-485e-9fbd-6a6157fcd7f1';
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'adminClient' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/apply_delete_policy.js:22:7]
+ 21 | 
+ 22 | const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    :       ^^^^^|^^^^^
+    :            `-- 'adminClient' is declared here
+ 23 | 
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'voteData' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/verify_severity_trigger.js:56:17]
+ 55 |   // Insert/upsert a vote (e.g. score = 5) into severity_votes
+ 56 |   const { data: voteData, error: voteErr } = await adminClient
+    :                 ^^^^|^^^
+    :                     `-- 'voteData' is declared here
+ 57 |     .from('severity_votes')
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'e1' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/verify_seed_data.js:28:32]
+ 27 |   // 1. Issues Audit
+ 28 |   const { data: issues, error: e1 } = await adminClient.from('issues').select('id, title, status, category, district, duplicate_of');
+    :                                ^|
+    :                                 `-- 'e1' is declared here
+ 29 |   console.log(`Total Issues in DB: ${issues?.length}`);
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'e2' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/verify_seed_data.js:42:30]
+ 41 |   // 2. Organizations Audit
+ 42 |   const { data: orgs, error: e2 } = await adminClient.from('organizations').select('id, name, type, district');
+    :                              ^|
+    :                               `-- 'e2' is declared here
+ 43 |   console.log(`Total Organizations in DB: ${orgs?.length}`);
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'e3' is declared but never used. Unused variables should start with a '_'.
+    ,-[scripts/verify_seed_data.js:49:33]
+ 48 |   // 3. Matches Audit
+ 49 |   const { data: matches, error: e3 } = await adminClient.from('matches').select('id, issue_id, org_id, role');
+    :                                 ^|
+    :                                  `-- 'e3' is declared here
+ 50 |   console.log(`Total Matches in DB: ${matches?.length}`);
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Identifier 'pg' is imported but never used.
+   ,-[scripts/test_pg_direct.js:1:8]
+ 1 | import pg from 'pg';
+   :        ^|
+   :         `-- 'pg' is imported here
+ 2 | import fs from 'fs';
+   `----
+  help: Consider removing this import.
+
+  ! react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+     ,-[src/context/AuthContext.jsx:131:17]
+ 130 | 
+ 131 | export function useAuth() {
+     :                 ^^^^^^^
+ 132 |   const context = useContext(AuthContext);
+     `----
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'fetchProfile'
+    ,-[src/context/AuthContext.jsx:84:6]
+ 57 |       if (session?.user) {
+ 58 |         fetchProfile(session.user.id).finally(() => {
+    :         ^^^^^^|^^^^^
+    :               `-- useEffect uses `fetchProfile` here
+ 59 |           if (mounted) setLoading(false);
+ 60 |         });
+ 61 |       } else {
+ 62 |         setLoading(false);
+ 63 |       }
+ 64 |     });
+ 65 | 
+ 66 |     // 2. Listen for auth changes (signup, login, logout, refresh)
+ 67 |     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+ 68 |       if (!mounted) return;
+ 69 |       setSession(session);
+ 70 |       setUser(session?.user ?? null);
+ 71 | 
+ 72 |       if (session?.user) {
+ 73 |         await fetchProfile(session.user.id);
+ 74 |       } else {
+ 75 |         setProfile(null);
+ 76 |       }
+ 77 |       setLoading(false);
+ 78 |     });
+ 79 | 
+ 80 |     return () => {
+ 81 |       mounted = false;
+ 82 |       subscription.unsubscribe();
+ 83 |     };
+ 84 |   }, []);
+    :      ^^
+ 85 | 
+    `----
+  help: Either include it or remove the dependency array.
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has missing dependencies: 'longitude', 'onChangeLocation', and 'latitude'
+    ,-[src/components/LocationPickerMap.jsx:22:24]
+ 21 | 
+ 22 |     const initialLat = latitude || 23.3441;
+    :                        ^^^^^^^^
+ 23 |     const initialLng = longitude || 85.3096;
+    :                        ^^^^^^^^^
+ 24 | 
+ 25 |     const map = L.map(containerRef.current, {
+ 26 |       center: [initialLat, initialLng],
+ 27 |       zoom: 13,
+ 28 |       zoomControl: true,
+ 29 |     });
+ 30 | 
+ 31 |     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+ 32 |       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+ 33 |       maxZoom: 19,
+ 34 |     }).addTo(map);
+ 35 | 
+ 36 |     const marker = L.marker([initialLat, initialLng], {
+ 37 |       draggable: true,
+ 38 |       title: 'Drag pin to set exact issue location',
+ 39 |     }).addTo(map);
+ 40 | 
+ 41 |     marker.bindPopup('<b>Drag me or click map</b><br/>to pinpoint exact issue location.').openPopup();
+ 42 | 
+ 43 |     // Event listener on marker drag end
+ 44 |     marker.on('dragend', (e) => {
+ 45 |       const { lat, lng } = e.target.getLatLng();
+ 46 |       if (onChangeLocation) {
+    :           ^^^^^^^^^^^^^^^^
+ 47 |         onChangeLocation(parseFloat(lat.toFixed(6)), parseFloat(lng.toFixed(6)));
+    `----
+    ,-[src/components/LocationPickerMap.jsx:70:6]
+ 69 |     };
+ 70 |   }, []); // Run once on mount
+    :      ^^
+ 71 | 
+    `----
+  help: Either include it or remove the dependency array.
+
+  ! eslint(no-unused-vars): Variable 'errTotal' is declared but never used. Unused variables should start with a '_'.
+    ,-[src/pages/Dashboard.jsx:49:38]
+ 48 |         // 1. Total Reports
+ 49 |         const { count: total, error: errTotal } = await supabase
+    :                                      ^^^^|^^^
+    :                                          `-- 'errTotal' is declared here
+ 50 |           .from('issues')
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'errResolved' is declared but never used. Unused variables should start with a '_'.
+    ,-[src/pages/Dashboard.jsx:54:41]
+ 53 |         // 2. Resolved Reports
+ 54 |         const { count: resolved, error: errResolved } = await supabase
+    :                                         ^^^^^|^^^^^
+    :                                              `-- 'errResolved' is declared here
+ 55 |           .from('issues')
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'errProgress' is declared but never used. Unused variables should start with a '_'.
+    ,-[src/pages/Dashboard.jsx:60:43]
+ 59 |         // 3. In Progress Reports
+ 60 |         const { count: inProgress, error: errProgress } = await supabase
+    :                                           ^^^^^|^^^^^
+    :                                                `-- 'errProgress' is declared here
+ 61 |           .from('issues')
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'errIssues' is declared but never used. Unused variables should start with a '_'.
+    ,-[src/pages/Dashboard.jsx:66:42]
+ 65 |         // 4. Categories & Status Mix
+ 66 |         const { data: issuesList, error: errIssues } = await supabase
+    :                                          ^^^^|^^^^
+    :                                              `-- 'errIssues' is declared here
+ 67 |           .from('issues')
+    `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Variable 'profile' is declared but never used. Unused variables should start with a '_'.
+    ,-[src/pages/IssueFeed.jsx:20:17]
+ 19 | export default function IssueFeed() {
+ 20 |   const { user, profile } = useAuth();
+    :                 ^^^|^^^
+    :                    `-- 'profile' is declared here
+ 21 | 
+    `----
+  help: Consider removing this declaration.
+
+  ! react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders
+    ,-[src/pages/IssueFeed.jsx:82:5]
+ 80 | 
+ 81 |   useEffect(() => {
+    :   ^^^^|^^^^
+    :       `-- This is the containing effect
+ 82 |     loadFeedData();
+    :     ^^^^^^|^^^^^
+    :           `-- Avoid calling setState() directly within an effect
+ 83 | 
+    `----
+  help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+  note: React Compiler skipped optimizing this component or hook. Additional guidance: https://react.dev/reference/eslint-plugin-react-hooks/lints/set-state-in-effect
+
+  ! react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders
+    ,-[src/pages/AdminOrgAccounts.jsx:60:7]
+ 57 | 
+ 58 |   useEffect(() => {
+    :   ^^^^|^^^^
+    :       `-- This is the containing effect
+ 59 |     if (user && profile?.role === 'admin') {
+ 60 |       loadData();
+    :       ^^^^|^^^
+    :           `-- Avoid calling setState() directly within an effect
+ 61 |     }
+    `----
+  help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+  note: React Compiler skipped optimizing this component or hook. Additional guidance: https://react.dev/reference/eslint-plugin-react-hooks/lints/set-state-in-effect
+
+  ! react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders
+    ,-[src/pages/OrgDashboard.jsx:95:7]
+ 92 | 
+ 93 |   useEffect(() => {
+    :   ^^^^|^^^^
+    :       `-- This is the containing effect
+ 94 |     if (user && profile?.org_id) {
+ 95 |       loadOrgData();
+    :       ^^^^^|^^^^^
+    :            `-- Avoid calling setState() directly within an effect
+ 96 | 
+    `----
+  help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.
+  note: React Compiler skipped optimizing this component or hook. Additional guidance: https://react.dev/reference/eslint-plugin-react-hooks/lints/set-state-in-effect
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'area'
+     ,-[src/pages/ReportIssue.jsx:145:6]
+  90 |       setLocalityChips(cachedChips);
+  91 |       if (cachedChips.length > 0 && (!area || !cachedChips.includes(area))) {
+     :                                       ^^|^
+     :                                         `-- useEffect uses `area` here
+  92 |         setArea(cachedChips[0]);
+  93 |       }
+  94 |       return;
+  95 |     }
+  96 | 
+  97 |     const timer = setTimeout(async () => {
+  98 |       try {
+  99 |         setLocalityLoading(true);
+ 100 |         const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en&email=setulink@jharkhand.gov.in`;
+ 101 |         const res = await fetch(url, {
+ 102 |           headers: {
+ 103 |             'User-Agent': 'SetuLink-CivicApp/1.0 (setulink@jharkhand.gov.in)',
+ 104 |           },
+ 105 |         });
+ 106 |         const data = await res.json();
+ 107 |         const addr = data?.address || {};
+ 108 | 
+ 109 |         const candidates = [];
+ 110 |         const keys = ['suburb', 'neighbourhood', 'village', 'hamlet', 'town', 'quarter', 'residential', 'city_district', 'road'];
+ 111 | 
+ 112 |         for (const k of keys) {
+ 113 |           if (addr[k] && typeof addr[k] === 'string' && addr[k].trim()) {
+ 114 |             const val = addr[k].trim();
+ 115 |             if (
+ 116 |               !candidates.includes(val) &&
+ 117 |               val.toLowerCase() !== district.toLowerCase() &&
+ 118 |               val.toLowerCase() !== 'india' &&
+ 119 |               val.toLowerCase() !== 'jharkhand'
+ 120 |             ) {
+ 121 |               candidates.push(val);
+ 122 |             }
+ 123 |           }
+ 124 |         }
+ 125 | 
+ 126 |         const topChips = candidates.slice(0, 3);
+ 127 |         geocodeCacheRef.current[cacheKey] = topChips;
+ 128 |         setLocalityChips(topChips);
+ 129 | 
+ 130 |         if (topChips.length > 0) {
+ 131 |           setArea(topChips[0]);
+ 132 |         } else {
+ 133 |           setShowCustomAreaInput(true);
+ 134 |         }
+ 135 |       } catch (err) {
+ 136 |         console.warn('Reverse geocode error:', err);
+ 137 |         setLocalityChips([]);
+ 138 |         setShowCustomAreaInput(true);
+ 139 |       } finally {
+ 140 |         setLocalityLoading(false);
+ 141 |       }
+ 142 |     }, 500);
+ 143 | 
+ 144 |     return () => clearTimeout(timer);
+ 145 |   }, [latitude, longitude, district]);
+     :      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 146 | 
+     `----
+  help: Either include it or remove the dependency array.
+
+Found 40 warnings and 0 errors.
+Finished in 68ms on 87 files with 104 rules using 16 threads.

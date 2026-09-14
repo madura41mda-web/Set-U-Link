@@ -162,8 +162,47 @@ export default function MyReports() {
   useEffect(() => {
     if (user) {
       fetchIssues();
+
+      const channel = supabase
+        .channel(`my-reports-changes-${user.id}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'issues' },
+          (payload) => {
+            if (payload.eventType === 'UPDATE' && payload.new) {
+              setIssues((prev) =>
+                prev.map((item) => (item.id === payload.new.id ? { ...item, ...payload.new } : item))
+              );
+              setSelectedDetailIssue((prev) =>
+                prev && prev.id === payload.new.id ? { ...prev, ...payload.new } : prev
+              );
+            } else {
+              fetchIssues();
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'matches' },
+          () => {
+            fetchIssues();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'comments' },
+          () => {
+            fetchIssues();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user, adminViewMode, fetchIssues]);
+
 
   // Admin advance status handler with automatic matching engine trigger
   const handleAdvanceStatus = async (e, issue) => {
