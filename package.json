@@ -14,9 +14,11 @@
     "@supabase/supabase-js": "^2.116.0",
     "leaflet": "^1.9.4",
     "pg": "^8.23.0",
+    "puppeteer-core": "^25.11.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.3"
+    "react-router-dom": "^7.18.3",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

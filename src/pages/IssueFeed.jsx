@@ -21,6 +21,7 @@ export default function IssueFeed() {
 
   const [issues, setIssues] = useState([]);
   const [userVotes, setUserVotes] = useState({}); // { [issueId]: number }
+  const [userUpvotes, setUserUpvotes] = useState({}); // { [issueId]: boolean }
   const [fetching, setFetching] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedDistrict, setSelectedDistrict] = useState('All Districts');
@@ -28,7 +29,7 @@ export default function IssueFeed() {
   const [submittingVoteId, setSubmittingVoteId] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // Load issues and user's severity votes
+  // Load issues and user's severity votes & upvotes
   const loadFeedData = useCallback(async () => {
     try {
       setFetching(true);
@@ -51,7 +52,7 @@ export default function IssueFeed() {
 
       setIssues(issuesData || []);
 
-      // If user is logged in, fetch user's severity votes
+      // If user is logged in, fetch user's severity votes & upvotes
       if (user) {
         try {
           const { data: votesData } = await supabase
@@ -66,8 +67,21 @@ export default function IssueFeed() {
             });
             setUserVotes(voteMap);
           }
+
+          const { data: upvotesData } = await supabase
+            .from('issue_upvotes')
+            .select('issue_id')
+            .eq('voter_id', user.id);
+
+          if (upvotesData) {
+            const upvoteMap = {};
+            upvotesData.forEach((uv) => {
+              upvoteMap[uv.issue_id] = true;
+            });
+            setUserUpvotes(upvoteMap);
+          }
         } catch (vErr) {
-          console.warn('Severity votes fetch warning:', vErr);
+          console.warn('User votes/upvotes fetch warning:', vErr);
         }
       }
     } catch (err) {
@@ -80,7 +94,132 @@ export default function IssueFeed() {
 
   useEffect(() => {
     loadFeedData();
+
+    // Realtime subscription for cross-device sync
+    const channel = supabase
+      .channel('issue-feed-changes')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'issues' },
+        (payload) => {
+          console.log('⚡ [Issue Realtime Event]:', payload);
+          if (payload.new && payload.new.id) {
+            setIssues((prev) =>
+              prev.map((item) =>
+                item.id === payload.new.id
+                  ? {
+                      ...item,
+                      upvotes: payload.new.upvotes ?? item.upvotes,
+                      avg_severity_score: payload.new.avg_severity_score ?? item.avg_severity_score,
+                    }
+                  : item
+              )
+            );
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'severity_votes' },
+        async (payload) => {
+          console.log('⚡ [Severity Vote Realtime Event]:', payload);
+          const targetIssueId = payload.new?.issue_id || payload.old?.issue_id;
+          if (targetIssueId) {
+            const { data: allVotes } = await supabase
+              .from('severity_votes')
+              .select('score')
+              .eq('issue_id', targetIssueId);
+
+            if (allVotes && allVotes.length > 0) {
+              const sum = allVotes.reduce((acc, curr) => acc + (curr.score || 0), 0);
+              const newAvg = parseFloat((sum / allVotes.length).toFixed(1));
+              setIssues((prev) =>
+                prev.map((item) =>
+                  item.id === targetIssueId ? { ...item, avg_severity_score: newAvg } : item
+                )
+              );
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [loadFeedData]);
+
+  // Handle upvoting an issue (Toggle On / Toggle Off)
+  const handleUpvote = async (issueId) => {
+    if (!user) {
+      setToast({ type: 'info', message: 'Please log in to upvote civic issues.' });
+      return;
+    }
+
+    const hasUpvoted = !!userUpvotes[issueId];
+    const currentIssue = issues.find((i) => i.id === issueId);
+    const currentCount = currentIssue?.upvotes || 0;
+
+    if (hasUpvoted) {
+      // Toggle Off: Remove user's upvote
+      const newCount = Math.max(0, currentCount - 1);
+      setUserUpvotes((prev) => ({ ...prev, [issueId]: false }));
+      setIssues((prev) =>
+        prev.map((item) => (item.id === issueId ? { ...item, upvotes: newCount } : item))
+      );
+
+      try {
+        const { error } = await supabase
+          .from('issue_upvotes')
+          .delete()
+          .eq('issue_id', issueId)
+          .eq('voter_id', user.id);
+
+        if (error) throw error;
+        setToast({ type: 'info', message: 'Upvote removed.' });
+      } catch (err) {
+        console.error('Remove upvote error:', err);
+        // Revert optimistic update
+        setUserUpvotes((prev) => ({ ...prev, [issueId]: true }));
+        setIssues((prev) =>
+          prev.map((item) => (item.id === issueId ? { ...item, upvotes: currentCount } : item))
+        );
+        setToast({ type: 'error', message: 'Failed to remove upvote.' });
+      }
+    } else {
+      // Toggle On: Add user's upvote
+      const newCount = currentCount + 1;
+      setUserUpvotes((prev) => ({ ...prev, [issueId]: true }));
+      setIssues((prev) =>
+        prev.map((item) => (item.id === issueId ? { ...item, upvotes: newCount } : item))
+      );
+
+      try {
+        const { error } = await supabase.from('issue_upvotes').insert({
+          issue_id: issueId,
+          voter_id: user.id,
+        });
+
+        if (error) {
+          if (error.code === '23505') {
+            setToast({ type: 'info', message: 'You have already upvoted this issue.' });
+            return;
+          }
+          throw error;
+        }
+        setToast({ type: 'success', message: 'Upvote recorded!' });
+      } catch (err) {
+        console.error('Upvote insert error:', err);
+        // Revert optimistic update
+        setUserUpvotes((prev) => ({ ...prev, [issueId]: false }));
+        setIssues((prev) =>
+          prev.map((item) => (item.id === issueId ? { ...item, upvotes: currentCount } : item))
+        );
+        setToast({ type: 'error', message: 'Failed to record upvote.' });
+      }
+    }
+  };
+
 
   // Handle rating severity on an issue
   const handleVoteSeverity = async (issueId, score) => {
@@ -108,11 +247,9 @@ export default function IssueFeed() {
         { onConflict: 'issue_id, voter_id' }
       );
 
-      if (voteErr) {
-        console.warn('DB vote upsert warning:', voteErr);
-      }
+      if (voteErr) throw voteErr;
 
-      // 2. Fetch all votes for this issue to compute aggregate avg_severity_score
+      // 2. Fetch updated votes for this issue to update local UI state immediately
       const { data: allVotes } = await supabase
         .from('severity_votes')
         .select('score')
@@ -124,19 +261,13 @@ export default function IssueFeed() {
         newAvg = parseFloat((sum / allVotes.length).toFixed(1));
       }
 
-      // 3. Update avg_severity_score on issues table
-      await supabase
-        .from('issues')
-        .update({ avg_severity_score: newAvg })
-        .eq('id', issueId);
-
       // Update local state
       setUserVotes((prev) => ({ ...prev, [issueId]: score }));
       setIssues((prev) =>
         prev.map((item) => (item.id === issueId ? { ...item, avg_severity_score: newAvg } : item))
       );
 
-      setToast({ type: 'success', message: `Severity vote (${score}/5) saved! Updated average rating to ${newAvg}/5.` });
+      setToast({ type: 'success', message: `Severity vote (${score}/5) saved! Average rating: ${newAvg}/5.` });
     } catch (err) {
       console.error('Severity vote error:', err);
       setToast({ type: 'error', message: 'Failed to record severity vote.' });
@@ -230,6 +361,7 @@ export default function IssueFeed() {
         <div className="space-y-6">
           {filteredIssues.map((issue) => {
             const isOwner = user?.id === issue.reporter_id;
+            const hasUpvoted = !!userUpvotes[issue.id];
             const currentScore = userVotes[issue.id] || 0;
             const avgScore = issue.avg_severity_score ? Number(issue.avg_severity_score).toFixed(1) : '0.0';
             const matchedOrgCount = (issue.matches || []).length;
@@ -269,8 +401,16 @@ export default function IssueFeed() {
 
                 {/* Image if available */}
                 {issue.photo_url && (
-                  <div className="rounded-2xl overflow-hidden max-h-72 border border-[var(--line)] bg-slate-900">
-                    <img src={issue.photo_url} alt={issue.title} className="w-full h-full object-cover" />
+                  <div className="rounded-2xl overflow-hidden h-64 sm:h-72 border border-[var(--line)] bg-slate-900 shrink-0">
+                    <img
+                      src={issue.photo_url}
+                      alt={issue.title}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://images.unsplash.com/photo-1584467735871-8e85353a8413?auto=format&fit=crop&w=800&q=80';
+                      }}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                 )}
 
@@ -282,10 +422,23 @@ export default function IssueFeed() {
                 {/* Footer Controls: Upvote info & Severity Rating Slider/Stars */}
                 <div className="pt-4 border-t border-[var(--line)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4 text-xs text-[var(--ink-soft)] font-medium">
-                    <span>👍 <strong className="text-[var(--ink)]">{issue.upvotes || 0}</strong> Upvotes</span>
+                    <button
+                      onClick={() => handleUpvote(issue.id)}
+                      className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer font-bold flex items-center gap-1.5 shadow-xs ${
+                        hasUpvoted
+                          ? 'bg-purple-600 text-white border border-purple-700 shadow-md scale-105'
+                          : 'bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200'
+                      }`}
+                      title={hasUpvoted ? 'Click to remove your upvote' : 'Click to upvote this civic issue'}
+                    >
+                      <span>👍</span>
+                      <strong className={hasUpvoted ? 'text-white' : 'text-[var(--ink)]'}>{issue.upvotes || 0}</strong>
+                      <span>{hasUpvoted ? 'Upvoted' : 'Upvotes'}</span>
+                    </button>
                     <span>🤝 <strong className="text-[var(--ink)]">{matchedOrgCount}</strong> Matched Orgs</span>
                     <span>📅 {new Date(issue.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
                   </div>
+
 
                   {/* Severity Voting Widget */}
                   <div className="bg-purple-50/70 p-3 rounded-2xl border border-purple-100 flex items-center gap-3 w-full sm:w-auto">

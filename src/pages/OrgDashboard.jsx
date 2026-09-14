@@ -93,8 +93,48 @@ export default function OrgDashboard() {
   useEffect(() => {
     if (user && profile?.org_id) {
       loadOrgData();
+
+      const channel = supabase
+        .channel(`org-dashboard-changes-${profile.org_id}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'issues' },
+          (payload) => {
+            if (payload.eventType === 'UPDATE' && payload.new) {
+              setMatchesList((prev) =>
+                prev.map((m) =>
+                  m.issues?.id === payload.new.id
+                    ? { ...m, issues: { ...m.issues, ...payload.new } }
+                    : m
+                )
+              );
+            } else {
+              loadOrgData();
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'matches', filter: `org_id=eq.${profile.org_id}` },
+          () => {
+            loadOrgData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'comments' },
+          () => {
+            loadOrgData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user, profile, loadOrgData]);
+
 
   // Handle advancing status from org side (e.g. to 'in_progress' or 'resolved')
   const handleUpdateStatus = async (issue, targetStage) => {
@@ -427,6 +467,10 @@ export default function OrgDashboard() {
                           <img
                             src={issue.photo_url}
                             alt={issue.title}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80';
+                            }}
                             className="w-full h-full object-cover"
                           />
                         </div>
