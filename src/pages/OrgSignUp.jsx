@@ -6,12 +6,9 @@ import { supabase } from '../lib/supabaseClient.js';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const ORG_TYPES = [
-  { value: 'university',           label: 'University / Research Institute' },
-  { value: 'csr',                  label: 'CSR / Corporate Fund' },
-  { value: 'startup',              label: 'Tech Startup / Innovation Partner' },
-  { value: 'msme',                 label: 'Local Enterprise / MSME' },
-  { value: 'govt',                 label: 'Government Agency / Department' },
-  { value: 'research_institution', label: 'Research Institution / Innovation Hub' },
+  { value: 'university',  label: 'University' },
+  { value: 'government',  label: 'Government' },
+  { value: 'industry',    label: 'Industry' },
 ];
 
 const DISTRICTS = [
@@ -33,7 +30,7 @@ const UNIVERSITY_SPECIALIZATIONS = [
 ];
 
 // Types that use the "focus area" field
-const FOCUS_AREA_TYPES = new Set(['csr', 'startup', 'msme', 'research_institution']);
+const FOCUS_AREA_TYPES = new Set(['industry']);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -45,7 +42,7 @@ export default function OrgSignUp() {
   // Determine default org type from sub-route URL
   const isUniversityRoute = location.pathname.includes('/university');
   const isIndustryRoute   = location.pathname.includes('/industry');
-  const initialType = isUniversityRoute ? 'university' : isIndustryRoute ? 'csr' : 'university';
+  const initialType = isUniversityRoute ? 'university' : isIndustryRoute ? 'industry' : 'university';
 
   // ── Form state ──────────────────────────────────────────────
   const [fullName,        setFullName]        = useState('');
@@ -109,7 +106,7 @@ export default function OrgSignUp() {
         specializations: orgType === 'university' && specializations.length > 0
           ? specializations
           : null,
-        jurisdiction: orgType === 'govt' && jurisdiction.trim()
+        jurisdiction: orgType === 'government' && jurisdiction.trim()
           ? jurisdiction.trim()
           : null,
         focus_area: FOCUS_AREA_TYPES.has(orgType) && focusArea.trim()
@@ -346,7 +343,7 @@ export default function OrgSignUp() {
           )}
 
           {/* ── Conditional: Government — Jurisdiction ── */}
-          {orgType === 'govt' && (
+          {orgType === 'government' && (
             <div>
               <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
                 Jurisdiction / Department Name

@@ -65,8 +65,8 @@ export async function matchIssue(issueId, changedByUserId) {
 
   const roleBuckets = {
     university: ['university', 'research_institution'],
-    industry: ['csr', 'startup', 'msme'],
-    govt: ['govt'],
+    industry:   ['csr', 'startup', 'msme', 'industry'],
+    govt:       ['govt', 'government'],
   };
 
   const matchesToCreate = [];
