@@ -711,14 +711,28 @@ export default function MyReports() {
 
               const ranked = organizations
                 .map((org) => {
-                  const orgCoords = parseCoords(org.location);
-                  const distMeters = calculateDistanceMeters(issueCoords.lat, issueCoords.lng, orgCoords.lat, orgCoords.lng);
-                  return { ...org, distMeters, distKm: (distMeters / 1000).toFixed(1) };
+                  // Use dedicated lat/lng columns when available;
+                  // fall back to parseCoords on the PostGIS location column.
+                  let orgLat, orgLng;
+                  if (org.latitude != null && org.longitude != null) {
+                    orgLat = org.latitude;
+                    orgLng = org.longitude;
+                  } else {
+                    const orgCoords = parseCoords(org.location);
+                    orgLat = orgCoords.lat;
+                    orgLng = orgCoords.lng;
+                  }
+                  const distMeters = calculateDistanceMeters(
+                    issueCoords.lat, issueCoords.lng,
+                    orgLat, orgLng
+                  );
+                  return { ...org, distMeters, distKm: isFinite(distMeters) ? (distMeters / 1000).toFixed(1) : '?' };
                 })
-                .sort((a, b) => a.distMeters - b.distMeters);
+                .sort((a, b) => (isFinite(a.distMeters) ? a.distMeters : Infinity) - (isFinite(b.distMeters) ? b.distMeters : Infinity));
 
-              const academicOrgs = ranked.filter((o) => ['university', 'research_institution'].includes(o.type)).slice(0, 2);
-              const industryOrgs = ranked.filter((o) => ['csr', 'startup', 'msme', 'govt'].includes(o.type)).slice(0, 2);
+              // Support both old type values (seed data) and new collapsed values (Phase 1 bugfix)
+              const academicOrgs  = ranked.filter((o) => ['university', 'research_institution'].includes(o.type)).slice(0, 2);
+              const industryOrgs  = ranked.filter((o) => ['industry', 'csr', 'startup', 'msme', 'government', 'govt'].includes(o.type)).slice(0, 2);
 
               if (academicOrgs.length === 0 && industryOrgs.length === 0) return null;
 

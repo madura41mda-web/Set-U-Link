@@ -95,12 +95,7 @@ export default function OrgSignUp() {
     try {
       setSubmitting(true);
 
-      // ── Step 1: Create auth user ─────────────────────────────
-      const { user: newUser } = await signUp(email.trim(), password, fullName.trim());
-      if (!newUser) throw new Error('Account creation failed — no user returned.');
-
-      // ── Step 2: Insert the organization row ──────────────────
-      // Build org-profile extras based on type
+      // ── Shared: build org extras from form state ──────────────
       const orgExtras = {
         location:  locationText.trim() || null,
         specializations: orgType === 'university' && specializations.length > 0
@@ -114,39 +109,80 @@ export default function OrgSignUp() {
           : null,
       };
 
-      const { data: orgData, error: orgErr } = await supabase
-        .from('organizations')
-        .insert({
-          name:          orgName.trim(),
-          type:          orgType,
-          district:      district,
-          category_tags: [],
-          ...orgExtras,
-        })
-        .select('id')
-        .single();
+      // ── Shared: insert org row + upsert profile ───────────────
+      const createOrgAndUpgradeProfile = async (userId) => {
+        const { data: orgData, error: orgErr } = await supabase
+          .from('organizations')
+          .insert({
+            name:          orgName.trim(),
+            type:          orgType,
+            district:      district,
+            category_tags: [],
+            ...orgExtras,
+          })
+          .select('id')
+          .single();
 
-      if (orgErr || !orgData?.id) {
-        console.error('Organization insert error:', orgErr);
-        throw new Error('Failed to create organization record. Please try again.');
-      }
+        if (orgErr || !orgData?.id) {
+          console.error('Organization insert error:', orgErr);
+          throw new Error('Failed to create organization record. Please try again.');
+        }
 
-      // ── Step 3: Upsert profile — directly as org_rep ─────────
-      // Phase-1: no pending_org_rep, no approval queue.
-      const { error: profileErr } = await supabase
-        .from('profiles')
-        .upsert({
-          id:        newUser.id,
-          full_name: fullName.trim(),
-          role:      'org_rep',
-          verified:  true,
-          org_id:    orgData.id,
+        const { error: profileErr } = await supabase
+          .from('profiles')
+          .upsert({
+            id:        userId,
+            full_name: fullName.trim(),
+            role:      'org_rep',
+            verified:  true,
+            org_id:    orgData.id,
+          });
+
+        if (profileErr) {
+          // Non-fatal — log and continue; the auth session is created
+          console.warn('Profile upsert warning:', profileErr);
+        }
+      };
+
+      // ── Step 1: Attempt new auth user creation ────────────────
+      let resolvedUserId = null;
+
+      try {
+        const { user: newUser } = await signUp(email.trim(), password, fullName.trim());
+        if (!newUser) throw new Error('Account creation failed — no user returned.');
+        resolvedUserId = newUser.id;
+      } catch (signUpErr) {
+        const msg = (signUpErr.message || '').toLowerCase();
+        const isAlreadyRegistered =
+          msg.includes('user already registered') ||
+          msg.includes('already registered') ||
+          signUpErr.status === 422;
+
+        if (!isAlreadyRegistered) {
+          // Genuine unexpected signup error — re-throw
+          throw signUpErr;
+        }
+
+        // ── Step 1b: Existing account — attempt sign-in ──────────
+        // The user already has an account. If the password on this form
+        // matches their existing password, treat this as an org upgrade.
+        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+          email:    email.trim(),
+          password: password,
         });
 
-      if (profileErr) {
-        // Non-fatal — log and continue; the auth session is created
-        console.warn('Profile upsert warning:', profileErr);
+        if (signInErr || !signInData?.user) {
+          // Wrong password — this is genuinely a different person's account
+          throw new Error(
+            'This email is already registered with a different password. Log in first, or use a different email.'
+          );
+        }
+
+        resolvedUserId = signInData.user.id;
       }
+
+      // ── Step 2 & 3: Create org row + upgrade profile ─────────
+      await createOrgAndUpgradeProfile(resolvedUserId);
 
       // ── Step 4: Go straight to OrgDashboard ──────────────────
       navigate('/org-dashboard');

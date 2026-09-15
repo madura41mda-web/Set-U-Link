@@ -7,7 +7,6 @@ import LocationPickerMap from '../components/LocationPickerMap.jsx';
 import { parseCoords, calculateDistanceMeters } from '../lib/geoUtils.js';
 import { classifyIssueCategory } from '../lib/aiClassifier.js';
 import { calculatePriorityScore } from '../lib/priorityScorer.js';
-import { matchIssue } from '../lib/matchingEngine.js';
 
 const CATEGORIES = [
   { value: 'education', label: 'Education & Schools' },
@@ -17,6 +16,29 @@ const CATEGORIES = [
   { value: 'infra', label: 'Infrastructure & Roads' },
   { value: 'agriculture', label: 'Agriculture & Farming' },
   { value: 'livelihood', label: 'Livelihood & Employment' },
+];
+
+const SEVERITY_OPTIONS = [
+  { value: 'low',       label: 'Low' },
+  { value: 'medium',    label: 'Medium' },
+  { value: 'high',      label: 'High' },
+  { value: 'emergency', label: 'Emergency' },
+];
+
+const TIMELINE_OPTIONS = [
+  { value: 'urgent',      label: 'Urgent (within days)' },
+  { value: 'short_term',  label: 'Short-term (1–3 months)' },
+  { value: 'medium_term', label: 'Medium-term (3–6 months)' },
+  { value: 'long_term',   label: 'Long-term (6–12 months)' },
+  { value: 'ongoing',     label: 'Ongoing' },
+];
+
+const SUPPORT_TYPE_OPTIONS = [
+  'Technical Solution',
+  'Funding',
+  'Volunteers / Manpower',
+  'Infrastructure',
+  'Policy Change',
 ];
 
 const DISTRICT_CENTERS = {
@@ -56,12 +78,18 @@ export default function ReportIssue() {
   const [category, setCategory] = useState('water');
   const [district, setDistrict] = useState('Ranchi');
   const [area, setArea] = useState('Doranda');
-  const [submitterType, setSubmitterType] = useState('citizen');
   const [latitude, setLatitude] = useState(DISTRICT_CENTERS.Ranchi.lat);
   const [longitude, setLongitude] = useState(DISTRICT_CENTERS.Ranchi.lng);
 
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
+
+  // Phase 2/3 matching + funding fields
+  const [severity,       setSeverity]       = useState('medium');   // required
+  const [peopleAffected, setPeopleAffected] = useState('');         // optional numeric
+  const [timelineReq,    setTimelineReq]    = useState('short_term'); // required
+  const [estimatedFunds, setEstimatedFunds] = useState('');         // optional ₹
+  const [supportTypes,   setSupportTypes]   = useState([]);         // multi-select
 
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -452,16 +480,13 @@ export default function ReportIssue() {
         return; // STOP execution here - no new row inserted into issues or status_history!
       }
 
-      // 3. Determine initial status and priority score for NEW non-duplicate reports
-      const isOfficial = submitterType === 'panchayat' || submitterType === 'ulb';
-      const initialStatus = isOfficial ? 'validated' : 'reported';
-
+      // 3. Build payload for NEW non-duplicate reports (always citizen for this demo phase)
       const computedPriorityScore = calculatePriorityScore({
         upvotes: 0,
         created_at: new Date(),
         title: title.trim(),
         description: description.trim(),
-        submitter_type: submitterType,
+        submitter_type: 'citizen',
       });
 
       const issuePayload = {
@@ -472,12 +497,18 @@ export default function ReportIssue() {
         area: area.trim(),
         location: `POINT(${longitude} ${latitude})`,
         photo_url: photoUrl,
-        status: initialStatus,
+        status: 'reported',
         upvotes: 0,
         reporter_id: profile?.id || user.id,
-        submitter_type: submitterType,
+        submitter_type: 'citizen',
         priority_score: computedPriorityScore,
         duplicate_of: null,
+        // Phase 2/3 extended fields
+        severity:        severity || null,
+        people_affected: peopleAffected ? parseInt(peopleAffected, 10) : null,
+        timeline_required: timelineReq || null,
+        estimated_funds: estimatedFunds ? parseFloat(estimatedFunds) : null,
+        support_types:   supportTypes.length > 0 ? supportTypes : null,
       };
 
       const { data: newIssue, error: issueError } = await supabase
@@ -498,15 +529,6 @@ export default function ReportIssue() {
         },
       ];
 
-      if (initialStatus === 'validated') {
-        historyRows.push({
-          issue_id: newIssue.id,
-          stage: 'validated',
-          outcome_type: null,
-          changed_by: user.id,
-        });
-      }
-
       const { error: historyError } = await supabase
         .from('status_history')
         .insert(historyRows);
@@ -516,28 +538,7 @@ export default function ReportIssue() {
         throw new Error(`Issue created, but failed to log status history: ${historyError.message || historyError.details || 'RLS or schema error'}`);
       }
 
-      // 5. If official panchayat/ulb report, auto-run Edge Matching Engine immediately
-      if (initialStatus === 'validated') {
-        try {
-          await matchIssue(newIssue.id, profile?.id || user.id);
-        } catch (matchErr) {
-          console.warn('Auto match error for official report:', matchErr);
-        }
-      }
-
-      if (isDuplicateLinked) {
-        setToast({
-          type: 'info',
-          message: "This looks similar to an existing report in your area — we've linked your report to it and added your voice to the count",
-        });
-      } else if (isOfficial) {
-        setToast({
-          type: 'success',
-          message: `Official ${submitterType.toUpperCase()} report auto-validated! Edge matching engine executed to match organizations.`,
-        });
-      } else {
-        setToast({ type: 'success', message: 'Issue submitted successfully!' });
-      }
+      setToast({ type: 'success', message: 'Issue submitted successfully!' });
 
       setTimeout(() => {
         navigate('/my-reports');
@@ -815,30 +816,102 @@ export default function ReportIssue() {
             )}
           </div>
 
-          {/* Submitter Type */}
+          {/* ── Phase 2/3: Severity + People Affected ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
+                Severity / Urgency <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={severity}
+                onChange={(e) => setSeverity(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-[var(--line)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)] transition-all font-medium text-[var(--ink)]"
+              >
+                {SEVERITY_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
+                People Affected (estimate)
+                <span className="ml-1 normal-case font-normal text-[var(--ink-soft)]">(optional)</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={peopleAffected}
+                onChange={(e) => setPeopleAffected(e.target.value)}
+                placeholder="e.g. 500"
+                className="w-full px-4 py-3 rounded-xl border border-[var(--line)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)] transition-all font-medium text-[var(--ink)]"
+              />
+            </div>
+          </div>
+
+          {/* ── Phase 2/3: Timeline + Estimated Funds ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
+                Timeline Required <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={timelineReq}
+                onChange={(e) => setTimelineReq(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-[var(--line)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)] transition-all font-medium text-[var(--ink)]"
+              >
+                {TIMELINE_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
+                Estimated Funds Required (₹)
+                <span className="ml-1 normal-case font-normal text-[var(--ink-soft)]">(optional)</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                value={estimatedFunds}
+                onChange={(e) => setEstimatedFunds(e.target.value)}
+                placeholder="e.g. 250000"
+                className="w-full px-4 py-3 rounded-xl border border-[var(--line)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)] transition-all font-medium text-[var(--ink)]"
+              />
+              <p className="mt-1 text-[10px] text-[var(--ink-soft)]">Rough estimate — refined later during university / industry review.</p>
+            </div>
+          </div>
+
+          {/* ── Phase 2/3: Type of Support Needed ── */}
           <div>
             <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-2">
-              Reporting As
+              Type of Support Needed
+              <span className="ml-1 normal-case font-normal text-[var(--ink-soft)]">(optional — select all that apply)</span>
             </label>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { value: 'citizen', label: 'Citizen' },
-                { value: 'panchayat', label: 'Panchayat Rep' },
-                { value: 'ulb', label: 'ULB Official' },
-              ].map((type) => (
-                <button
-                  key={type.value}
-                  type="button"
-                  onClick={() => setSubmitterType(type.value)}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                    submitterType === type.value
-                      ? 'bg-[var(--brand)] text-white border-[var(--brand)] shadow-md'
-                      : 'bg-white text-[var(--ink-soft)] border-[var(--line)] hover:border-[var(--brand)]'
-                  }`}
-                >
-                  {type.label}
-                </button>
-              ))}
+            <div className="flex flex-wrap gap-2">
+              {SUPPORT_TYPE_OPTIONS.map((opt) => {
+                const selected = supportTypes.includes(opt);
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() =>
+                      setSupportTypes((prev) =>
+                        prev.includes(opt) ? prev.filter((s) => s !== opt) : [...prev, opt]
+                      )
+                    }
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      selected
+                        ? 'bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm'
+                        : 'bg-white text-[var(--ink-soft)] border-[var(--line)] hover:border-[var(--brand)] hover:text-[var(--ink)]'
+                    }`}
+                  >
+                    {selected && <span className="mr-1">✓</span>}{opt}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
