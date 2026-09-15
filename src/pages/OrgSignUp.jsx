@@ -3,98 +3,156 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../lib/supabaseClient.js';
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const ORG_TYPES = [
-  { value: 'university', label: 'University / Research Institute' },
-  { value: 'csr', label: 'CSR / Corporate Fund' },
-  { value: 'startup', label: 'Tech Startup / Innovation Partner' },
-  { value: 'msme', label: 'Local Enterprise / MSME' },
-  { value: 'govt', label: 'Government Agency / Department' },
+  { value: 'university',           label: 'University / Research Institute' },
+  { value: 'csr',                  label: 'CSR / Corporate Fund' },
+  { value: 'startup',              label: 'Tech Startup / Innovation Partner' },
+  { value: 'msme',                 label: 'Local Enterprise / MSME' },
+  { value: 'govt',                 label: 'Government Agency / Department' },
   { value: 'research_institution', label: 'Research Institution / Innovation Hub' },
 ];
 
-const DISTRICTS = ['Ranchi', 'Dhanbad', 'East Singhbhum', 'Bokaro', 'Hazaribagh', 'Deoghar', 'Giridih', 'Ramgarh', 'West Singhbhum'];
+const DISTRICTS = [
+  'Ranchi', 'Dhanbad', 'East Singhbhum', 'Bokaro', 'Hazaribagh',
+  'Deoghar', 'Giridih', 'Ramgarh', 'West Singhbhum',
+];
 
-const ORG_SIGNUP_ALLOWLIST = {
-  'madura41mda@gmail.com': ['university'],
-  'madura.0741@gmail.com': ['csr', 'startup', 'msme', 'govt', 'research_institution'],
-};
+const UNIVERSITY_SPECIALIZATIONS = [
+  'Civil Engineering',
+  'Mechanical Engineering',
+  'CSE',
+  'Electrical Engineering',
+  'Agriculture',
+  'Environmental Engineering',
+  'Water Resources',
+  'Public Health',
+  'Rural Development',
+  'Other',
+];
+
+// Types that use the "focus area" field
+const FOCUS_AREA_TYPES = new Set(['csr', 'startup', 'msme', 'research_institution']);
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function OrgSignUp() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signUp } = useAuth();
 
-  // Determine default org type based on sub-route URL e.g. /signup/university or /signup/industry
+  // Determine default org type from sub-route URL
   const isUniversityRoute = location.pathname.includes('/university');
-  const isIndustryRoute = location.pathname.includes('/industry');
+  const isIndustryRoute   = location.pathname.includes('/industry');
   const initialType = isUniversityRoute ? 'university' : isIndustryRoute ? 'csr' : 'university';
 
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // ── Form state ──────────────────────────────────────────────
+  const [fullName,        setFullName]        = useState('');
+  const [email,           setEmail]           = useState('');
+  const [password,        setPassword]        = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [orgName, setOrgName] = useState('');
-  const [orgType, setOrgType] = useState(initialType);
-  const [district, setDistrict] = useState('Ranchi');
-  const [error, setError] = useState('');
+  const [orgName,         setOrgName]         = useState('');
+  const [orgType,         setOrgType]         = useState(initialType);
+  const [district,        setDistrict]        = useState('Ranchi');
+
+  // Phase-1 extended profile fields
+  const [locationText,    setLocationText]    = useState('');   // free-text city/area
+  const [specializations, setSpecializations] = useState([]);   // university multi-select
+  const [jurisdiction,    setJurisdiction]    = useState('');   // government dept/corp
+  const [focusArea,       setFocusArea]       = useState('');   // csr/startup/msme/ri
+
+  const [error,      setError]      = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // ── Specialization toggle ────────────────────────────────────
+  const toggleSpecialization = (spec) => {
+    setSpecializations((prev) =>
+      prev.includes(spec) ? prev.filter((s) => s !== spec) : [...prev, spec]
+    );
+  };
+
+  // ── Submit ───────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
+    // Basic validation
     if (!fullName.trim() || !email.trim() || !password || !orgName.trim()) {
       setError('Please fill in all required fields, including Organization Name.');
       return;
     }
-
     if (password.length < 6) {
       setError('Password must be at least 6 characters long.');
       return;
     }
-
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
-
-    const cleanEmail = email.trim().toLowerCase();
-    const allowedTypes = ORG_SIGNUP_ALLOWLIST[cleanEmail];
-
-    if (!allowedTypes) {
-      setError('This email address is not authorized to register an organization account.');
-      return;
-    }
-
-    if (!allowedTypes.includes(orgType)) {
-      setError(`This email is not authorized for the selected organization type. Allowed organization type(s): ${allowedTypes.join(', ')}.`);
+    if (orgType === 'university' && specializations.length === 0) {
+      setError('Please select at least one area of specialization for your university.');
       return;
     }
 
     try {
       setSubmitting(true);
-      // 1. Create auth user with metadata indicating org signup request
+
+      // ── Step 1: Create auth user ─────────────────────────────
       const { user: newUser } = await signUp(email.trim(), password, fullName.trim());
+      if (!newUser) throw new Error('Account creation failed — no user returned.');
 
-      if (newUser) {
-        // 2. Set profile role to 'pending_org_rep' and verified to false
-        const { error: profileErr } = await supabase
-          .from('profiles')
-          .upsert({
-            id: newUser.id,
-            full_name: fullName.trim(),
-            role: 'pending_org_rep',
-            verified: false,
-            org_id: null,
-          });
+      // ── Step 2: Insert the organization row ──────────────────
+      // Build org-profile extras based on type
+      const orgExtras = {
+        location:  locationText.trim() || null,
+        specializations: orgType === 'university' && specializations.length > 0
+          ? specializations
+          : null,
+        jurisdiction: orgType === 'govt' && jurisdiction.trim()
+          ? jurisdiction.trim()
+          : null,
+        focus_area: FOCUS_AREA_TYPES.has(orgType) && focusArea.trim()
+          ? focusArea.trim()
+          : null,
+      };
 
-        if (profileErr) {
-          console.warn('Profile update warning:', profileErr);
-        }
+      const { data: orgData, error: orgErr } = await supabase
+        .from('organizations')
+        .insert({
+          name:          orgName.trim(),
+          type:          orgType,
+          district:      district,
+          category_tags: [],
+          ...orgExtras,
+        })
+        .select('id')
+        .single();
+
+      if (orgErr || !orgData?.id) {
+        console.error('Organization insert error:', orgErr);
+        throw new Error('Failed to create organization record. Please try again.');
       }
 
-      // Navigate to pending verification screen
-      navigate('/pending-verification');
+      // ── Step 3: Upsert profile — directly as org_rep ─────────
+      // Phase-1: no pending_org_rep, no approval queue.
+      const { error: profileErr } = await supabase
+        .from('profiles')
+        .upsert({
+          id:        newUser.id,
+          full_name: fullName.trim(),
+          role:      'org_rep',
+          verified:  true,
+          org_id:    orgData.id,
+        });
+
+      if (profileErr) {
+        // Non-fatal — log and continue; the auth session is created
+        console.warn('Profile upsert warning:', profileErr);
+      }
+
+      // ── Step 4: Go straight to OrgDashboard ──────────────────
+      navigate('/org-dashboard');
     } catch (err) {
       console.error('Org Signup error:', err);
       setError(err.message || 'Failed to create organization account. Please try again.');
@@ -103,9 +161,12 @@ export default function OrgSignUp() {
     }
   };
 
+  // ── Render ───────────────────────────────────────────────────
   return (
     <div className="min-h-[85vh] pt-24 pb-16 flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-lg space-y-8 bg-white/90 nav-blur p-8 rounded-3xl border border-[var(--line)] shadow-2xl">
+
+        {/* Header */}
         <div className="text-center space-y-2">
           <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-600 text-white font-extrabold shadow-md">
             🏢
@@ -117,21 +178,12 @@ export default function OrgSignUp() {
             Register Organization Representative
           </h2>
           <p className="text-xs text-[var(--ink-soft)] max-w-md mx-auto">
-            Create an official partner account for your university, CSR fund, or enterprise to join SetuLink's tri-party resolution pipeline.
+            Create an official partner account for your university, CSR fund, government department,
+            or enterprise to join SetuLink's tri-party resolution pipeline.
           </p>
         </div>
 
-        {/* Verification Warning Box */}
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-3 shadow-sm">
-          <span className="text-lg">🛡️</span>
-          <div>
-            <div className="font-extrabold uppercase tracking-wider text-amber-950">Verification Required</div>
-            <div className="text-amber-800 mt-0.5">
-              New organization registrations undergo administrative verification. Access to matched civic issues and the Org Dashboard will be granted upon admin review & linkage.
-            </div>
-          </div>
-        </div>
-
+        {/* Error banner */}
         {error && (
           <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-2.5">
             <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -141,13 +193,16 @@ export default function OrgSignUp() {
           </div>
         )}
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-5" onSubmit={handleSubmit}>
+
+          {/* Row 1: Full Name + Email */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
                 Full Name (Representative)
               </label>
               <input
+                id="org-rep-fullname"
                 type="text"
                 required
                 value={fullName}
@@ -162,6 +217,7 @@ export default function OrgSignUp() {
                 Official Email
               </label>
               <input
+                id="org-rep-email"
                 type="email"
                 required
                 value={email}
@@ -172,12 +228,14 @@ export default function OrgSignUp() {
             </div>
           </div>
 
+          {/* Row 2: Org Name + Org Type */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
                 Organization Name
               </label>
               <input
+                id="org-name"
                 type="text"
                 required
                 value={orgName}
@@ -192,8 +250,15 @@ export default function OrgSignUp() {
                 Organization Type
               </label>
               <select
+                id="org-type"
                 value={orgType}
-                onChange={(e) => setOrgType(e.target.value)}
+                onChange={(e) => {
+                  setOrgType(e.target.value);
+                  // Reset type-specific fields on change
+                  setSpecializations([]);
+                  setJurisdiction('');
+                  setFocusArea('');
+                }}
                 className="w-full px-4 py-3 rounded-xl border border-[var(--line)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
               >
                 {ORG_TYPES.map((t) => (
@@ -205,29 +270,124 @@ export default function OrgSignUp() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
-              Headquarters / Primary Operating District
-            </label>
-            <select
-              value={district}
-              onChange={(e) => setDistrict(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-[var(--line)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-            >
-              {DISTRICTS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
+          {/* Row 3: District + Location */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
+                Headquarters District
+              </label>
+              <select
+                id="org-district"
+                value={district}
+                onChange={(e) => setDistrict(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-[var(--line)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+              >
+                {DISTRICTS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
+                City / Area
+              </label>
+              <input
+                id="org-location"
+                type="text"
+                value={locationText}
+                onChange={(e) => setLocationText(e.target.value)}
+                placeholder="e.g. Ranchi, Jharkhand"
+                className="w-full px-4 py-3 rounded-xl border border-[var(--line)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+              />
+            </div>
           </div>
 
+          {/* ── Conditional: University — Specializations ── */}
+          {orgType === 'university' && (
+            <div>
+              <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-2">
+                Areas of Specialization <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {UNIVERSITY_SPECIALIZATIONS.map((spec) => {
+                  const checked = specializations.includes(spec);
+                  return (
+                    <button
+                      key={spec}
+                      type="button"
+                      onClick={() => toggleSpecialization(spec)}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold text-left transition-all cursor-pointer ${
+                        checked
+                          ? 'bg-purple-600 border-purple-700 text-white shadow-sm'
+                          : 'bg-white border-[var(--line)] text-[var(--ink)] hover:border-purple-400 hover:bg-purple-50'
+                      }`}
+                    >
+                      <span className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
+                        checked ? 'bg-white border-white' : 'border-[var(--line)]'
+                      }`}>
+                        {checked && (
+                          <svg className="w-3 h-3 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </span>
+                      {spec}
+                    </button>
+                  );
+                })}
+              </div>
+              {specializations.length > 0 && (
+                <p className="mt-2 text-[10px] text-purple-700 font-semibold">
+                  {specializations.length} selected: {specializations.join(', ')}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ── Conditional: Government — Jurisdiction ── */}
+          {orgType === 'govt' && (
+            <div>
+              <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
+                Jurisdiction / Department Name
+              </label>
+              <input
+                id="org-jurisdiction"
+                type="text"
+                value={jurisdiction}
+                onChange={(e) => setJurisdiction(e.target.value)}
+                placeholder="e.g. Dhanbad Municipal Corporation"
+                className="w-full px-4 py-3 rounded-xl border border-[var(--line)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+              />
+            </div>
+          )}
+
+          {/* ── Conditional: CSR / Startup / MSME / RI — Focus Area ── */}
+          {FOCUS_AREA_TYPES.has(orgType) && (
+            <div>
+              <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
+                Sector / Focus Area
+                <span className="ml-1 normal-case text-[var(--ink-soft)] font-normal">(optional)</span>
+              </label>
+              <input
+                id="org-focus-area"
+                type="text"
+                value={focusArea}
+                onChange={(e) => setFocusArea(e.target.value)}
+                placeholder="e.g. Clean water technology, Tribal livelihood"
+                className="w-full px-4 py-3 rounded-xl border border-[var(--line)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+              />
+            </div>
+          )}
+
+          {/* Row: Password + Confirm Password */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-[var(--ink)] uppercase tracking-wider mb-1.5">
                 Password
               </label>
               <input
+                id="org-rep-password"
                 type="password"
                 required
                 value={password}
@@ -242,6 +402,7 @@ export default function OrgSignUp() {
                 Confirm Password
               </label>
               <input
+                id="org-rep-confirm-password"
                 type="password"
                 required
                 value={confirmPassword}
@@ -253,6 +414,7 @@ export default function OrgSignUp() {
           </div>
 
           <button
+            id="org-signup-submit"
             type="submit"
             disabled={submitting}
             className="w-full mt-2 py-3.5 px-4 rounded-xl text-sm font-extrabold bg-purple-700 hover:bg-purple-800 text-white flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 transition-all cursor-pointer"
@@ -263,10 +425,10 @@ export default function OrgSignUp() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Submitting Organization Registration...
+                Setting up your organization…
               </>
             ) : (
-              'Register Organization Account'
+              'Register & Continue to Dashboard →'
             )}
           </button>
         </form>
